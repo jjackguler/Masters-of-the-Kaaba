@@ -1,0 +1,5 @@
+dist/
+node_modules/
+*.t.js
+strings.json
+__pycache__/

@@ -59,7 +59,7 @@ const arrowG=new THREE.Group();{const sh=new THREE.Shape();sh.moveTo(0,.55);sh.l
   const o=new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshBasicMaterial({color:0x5a3a10,transparent:true,opacity:.55,depthWrite:false}));o.rotation.x=-Math.PI/2;o.scale.setScalar(1.18);o.position.y=-.01;o.renderOrder=2;
   arrowG.add(o,m);scene.add(arrowG);arrowG.visible=false;}
 function stepArrow(t){if(!SITE.on||state!=='play'||!t){arrowG.visible=false;return;}const dx=t.x-P.x,dz=t.z-P.z,d=Math.hypot(dx,dz);if(d<3.2){arrowG.visible=false;return;}
-  arrowG.visible=true;const k=1.6+Math.sin(clock*6)*.15;arrowG.position.set(P.x+dx/d*k,P.y+.08,P.z+dz/d*k);arrowG.rotation.y=Math.atan2(dx,dz)+Math.PI;arrowG.scale.setScalar(1+Math.sin(clock*6)*.06);}
+  arrowG.visible=true;const bob=(typeof RM==='function'&&RM())?0:1;const k=1.6+Math.sin(clock*6)*.15*bob;arrowG.position.set(P.x+dx/d*k,P.y+.08,P.z+dz/d*k);arrowG.rotation.y=Math.atan2(dx,dz)+Math.PI;arrowG.scale.setScalar(1+Math.sin(clock*6)*.06*bob);}
 
 /* ---------- site data ---------- */
 const COURSES=[{t:'stone',n:12,h:1.6},{t:'wood',n:8,h:3.0},{t:'stone',n:14,h:4.6},{t:'wood',n:10,h:6.0},{t:'stone',n:16,h:7.4},{t:'wood',n:10,h:8.7,roof:true},{t:'wood',n:6,door:true}];
@@ -134,8 +134,9 @@ const UPG=[
   {id:'porter2',cost:140,ch:6,x:-26,z:8,icon:'🧔',label:L2('Tahta hamalı','Timber porter'),mk:()=>{porters.push(worker(-28,20,{robe:0x2f5d8a,cloth:0xe9dcc0},'porterW'));}},
   {id:'fast',cost:180,ch:6,need:'porter2',x:4,z:-30,icon:'🩴',label:L2('Hızlı sandalet','Quick sandals'),apply:()=>{}}];
 function padsOn(){return R.ch>=3&&R.ch!==4;}
+function killPad(m){scene.remove(m);try{m.geometry.dispose();if(m.material.map)m.material.map.dispose();m.material.dispose();}catch(_){}}
 function syncPads(){for(const u of UPG){const want=padsOn()&&!D.up[u.id]&&R.ch>=u.ch&&(!u.need||D.up[u.need]);const p=PADS.find(p=>p.u===u);
-    if(p&&!want){scene.remove(p.mesh);PADS.splice(PADS.indexOf(p),1);}
+    if(p&&!want){killPad(p.mesh);PADS.splice(PADS.indexOf(p),1);}
     if(!p&&want){const m=new THREE.Mesh(new THREE.CircleGeometry(1.6,40),new THREE.MeshBasicMaterial({map:padTex(u.icon,'★'+u.cost,'#d39a2c'),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4}));
       m.rotation.x=-Math.PI/2;m.position.set(u.x,height(u.x,u.z)+.07,u.z);scene.add(m);PADS.push({u,mesh:m,paid:D.up['p_'+u.id]||0});}}}
 let workersMade={};
@@ -149,7 +150,7 @@ function gameActive(){return state==='play'&&bookEl.hidden&&mapEl.hidden&&(typeo
 /* one ledger for bereket: profile and the running chapter move together (T11) */
 function award(n){n=Math.max(0,Math.round(n));D.coins+=n;R.coins=(R.coins||0)+n;runDirty=true;}
 let runDirty=false;
-function unloadBonus(){if(!unload.z)return;const cap=unload.cap||D.cap;if(unload.n>=4&&unload.n>=cap){const b=unload.n*2;award(b);ftext(L2('TAM YÜK! +','FULL LOAD! +')+b,P.x,P.y+2.4,P.z,'#ffd75e');coinsFly(3,P.x,P.y+1.5,P.z);}unload.z=null;}
+function unloadBonus(){if(!unload.z)return;const cap=unload.cap||D.cap;if(unload.n>=Math.max(2,cap)){const b=unload.n*2;award(b);ftext(L2('TAM YÜK! +','FULL LOAD! +')+b,P.x,P.y+2.4,P.z,'#ffd75e');coinsFly(3,P.x,P.y+1.5,P.z);}unload.z=null;}
 function zoneOn(z){return z.chs.includes(R.ch)&&(!z.when||z.when());}
 function bumpUnload(z,n){if(unload.z!==z){unloadBonus();unload={z,n:0,t:0,cap:hooks.cap?hooks.cap():D.cap};}unload.n+=n;unload.t=0;runDirty=true;}
 function siteStep(dt){if(!SITE.on||!started)return;
@@ -178,7 +179,7 @@ function siteStep(dt){if(!SITE.on||!started)return;
   let slow=D.up.fast?1.22:1;for(const p of puddles){p.m.visible=R.ch===6;if(p.m.visible&&Math.hypot(P.x-p.x,P.z-p.z)<p.r){slow*=.55;if(beat&&P.speed>1&&Math.random()<.3)sfx.splash();}}P.slow=slow;
   if(!playing){stackVis();return;}
   if(beat){const top=stack[stack.length-1];const cap=hooks.cap?hooks.cap():D.cap;
-    const take=(z,type)=>{if(z.count>0&&stack.length<cap&&(!stack.length||stack[0]===type)){z.count--;stack.push(type);pileVis(z);tone(HIC[4+stack.length%5],.06,.025);if(stack.length===cap)ftext(L2('DOLU','FULL'),P.x,P.y+2.3,P.z,'#ffd75e');return true;}return false;};
+    const take=(z,type)=>{if(typeof takeBlocked==='function'&&takeBlocked(z,type))return false;if(z.count>0&&stack.length<cap&&(!stack.length||stack[0]===type)){z.count--;stack.push(type);pileVis(z);tone(HIC[4+stack.length%5],.06,.025);if(stack.length===cap)ftext(L2('DOLU','FULL'),P.x,P.y+2.3,P.z,'#ffd75e');return true;}return false;};
     const give=(z,type)=>{if(stack.length&&stack[stack.length-1]===type&&(z.count||0)<z.max){stack.pop();z.count=(z.count||0)+1;pileVis(z);sfx.thunk();bumpUnload(z,1);return true;}return false;};
     if(inZ(Z.raw))take(Z.raw,'raw');if(inZ(Z.cutIn))give(Z.cutIn,'raw');if(inZ(Z.cutOut))take(Z.cutOut,'block');
     if(inZ(Z.rawWood))take(Z.rawWood,'rawwood');if(inZ(Z.carIn))give(Z.carIn,'rawwood');if(inZ(Z.carOut))take(Z.carOut,'beam');
@@ -190,7 +191,8 @@ function siteStep(dt){if(!SITE.on||!started)return;
 }
 function faceW(w,z){w.face=Math.atan2(z.x-w.x,z.z-w.z);w.g.rotation.y=w.face;}
 const SAVE_VER=2;
-function ssave(){try{D.ver=SAVE_VER;D.codex=Object.keys(G.found||{});const j=JSON.stringify(D);localStorage.setItem(SKEY,j);localStorage.setItem(SKEY+'-bak',j);runDirty=false;return true;}catch(e){console.warn('save failed',e);saveFailed=true;return false;}}
+const PRESAVE=[];
+function ssave(){for(const f of PRESAVE){try{f();}catch(e){console.warn('presave',e);}}try{D.ver=SAVE_VER;D.codex=Object.keys(G.found||{});const j=JSON.stringify(D);localStorage.setItem(SKEY,j);localStorage.setItem(SKEY+'-bak',j);runDirty=false;return true;}catch(e){console.warn('save failed',e);saveFailed=true;return false;}}
 let saveFailed=false;
 const num=(v,d,lo,hi)=>{v=Number(v);if(!isFinite(v))return d;return Math.min(hi,Math.max(lo,v));};
 function cleanProfile(s){const o={unl:1,stars:{},best:{},coins:0,good:0,cap:4,up:{},tut:0,last:1,codex:[],run:null,meta:null,ver:SAVE_VER};if(!s||typeof s!=='object')return o;
@@ -202,7 +204,7 @@ function cleanProfile(s){const o={unl:1,stars:{},best:{},coins:0,good:0,cap:4,up
   // capacity is derived from purchased upgrades, so a damaged number can not give infinite carry
   o.cap=4+(o.up.cap1?2:0)+(o.up.cap2?2:0);
   if(Array.isArray(s.codex))o.codex=s.codex.filter(x=>typeof x==='string'&&CX[x]);
-  if(s.run&&typeof s.run==='object'&&s.run.ch>=1&&s.run.ch<=8&&s.run.ch<=Math.max(o.unl,o.done?8:0))o.run=s.run;
+  if(s.run&&typeof s.run==='object'&&Number.isInteger(s.run.ch)&&s.run.ch>=1&&s.run.ch<=7&&s.run.ch<=Math.max(o.unl,o.done?8:0))o.run=s.run;
   if(s.meta&&typeof s.meta==='object')o.meta=s.meta;
   return o;}
 function sload(){let s=null,src='none';for(const k of [SKEY,SKEY+'-bak']){try{const t=localStorage.getItem(k);if(t){s=JSON.parse(t);src=k;break;}}catch(_){s=null;}}

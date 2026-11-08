@@ -25,6 +25,8 @@ function cleanMeta(m){const n=(v,d,lo,hi)=>{v=Number(v);return isFinite(v)?Math.
   if(m.up&&typeof m.up==='object')for(const u of MUPG)if(m.up[u.id])o.up[u.id]=true;
   for(const k of ['w','d','b','dates','flour','oven','ovenOut'])o.stock[k]=Math.round(n(m.stock&&m.stock[k],0,0,40));
   for(const k in STD)o.cash[k]=Math.round(n(m.cash&&m.cash[k],0,0,1e6));
+  const OK=new Set(['water','dates','flour','bread']);o.carry=Array.isArray(m.carry)?m.carry.filter(t=>OK.has(t)).slice(0,12):[];
+  o.hc={};if(m.hc&&typeof m.hc==='object')for(const id of ['saka','hurmaci','cirak']){const v=m.hc[id];if(v&&OK.has(v.item))o.hc[id]={item:v.item,n:Math.round(n(v.n,0,0,3))};}
   return o;}
 D.meta=cleanMeta(D.meta);
 {const cp0=cleanProfile;cleanProfile=function(s){const o=cp0(s);o.meta=cleanMeta(o.meta);return o;};}
@@ -65,10 +67,11 @@ function buildMeta(){if(metaBuilt)return;metaBuilt=true;build();metaG=new THREE.
   const dome=new THREE.Mesh(new THREE.SphereGeometry(1.2,16,10,0,Math.PI*2,0,Math.PI/2),mat.clay||mat.wood);dome.position.set(ov.x,height(ov.x,ov.z),ov.z);dome.castShadow=true;metaG.add(dome);Z.oven.dome=dome;
   baker=makePerson({robe:0x8a6a4a,cloth:0xf2e8d5,beard:0x3a2e26,hat:'scarf'});const bs=freeSpot(ov.x,ov.z+1.9,.4);baker.x=bs.x;baker.z=bs.z;baker.g.position.set(bs.x,height(bs.x,bs.z),bs.z);baker.g.rotation.y=Math.PI;scene.add(baker.g);baker.t=0;
   GATES=[[32,-12],[-31,-8],[-6,31],[24,24]].map(([x,z])=>freeSpot(x,z,.8));
+  ACCEPTS.set(STD.w.z,['water']);ACCEPTS.set(STD.d.z,['dates']);ACCEPTS.set(STD.b.z,['bread']);ACCEPTS.set(Z.oven,['flour']);
   metaG.visible=false;baker.g.visible=false;}
 /* ---------- upgrade pads for this layer ---------- */
 const MPOS=[[17,9],[13.5,12.5],[9.5,14.5]];
-function syncMPads(){for(const p of MPADS.splice(0))scene.remove(p.mesh);if(R.ch!==MCH)return;
+function syncMPads(){for(const p of MPADS.splice(0))killPad(p.mesh);if(R.ch!==MCH)return;
   const av=MUPG.filter(u=>!MU(u.id)&&(!u.need||MU(u.need))).slice(0,3);
   av.forEach((u,i)=>{const s=freeSpot(MPOS[i][0],MPOS[i][1],1.7);u.x=s.x;u.z=s.z;
     const m=new THREE.Mesh(new THREE.CircleGeometry(1.6,40),new THREE.MeshBasicMaterial({map:padTex(u.icon,'★'+u.cost,'#d39a2c'),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4}));
@@ -85,9 +88,10 @@ function makeHelpers(){for(const id in HJOB){if(!MU(id)||HELP.some(h=>h.id===id)
 function stepHelpers(dt,sim){for(const h of HELP){h.per.g.visible=true;let sp=0;
     if(!h.job)h.job=HJOB[h.id]();const j=h.job;if(!j){animPerson(h.per,dt,0,'idle');continue;}
     const t=h.carry.length?j.dst:j.src;const dx=t.x-h.x,dz=t.z-h.z,d=Math.hypot(dx,dz);
-    if(d>1.1){if(sim){const v=2.6;h.x+=dx/d*v*dt;h.z+=dz/d*v*dt;h.face=Math.atan2(dx,dz);sp=v;collideEnt(h,.3,0);}}
+    if(d>1.1){if(sim){const v=2.6,ox=h.x,oz=h.z,s=Math.min(d,v*dt);h.x+=dx/d*s;h.z+=dz/d*s;h.face=Math.atan2(dx,dz);sp=v;collideEnt(h,.3,0);
+      if(Math.hypot(h.x-ox,h.z-oz)<s*.25){h.stuck=(h.stuck||0)+dt;if(h.stuck>1.2){h.x=ox+dx/d*Math.min(d,1.2);h.z=oz+dz/d*Math.min(d,1.2);h.stuck=0;}}else h.stuck=0;}}
     else if(sim){h.t+=dt;if(h.t>.35){h.t=0;
-      if(h.carry.length){if(j.dst.count<j.dst.max){h.carry.pop();j.dst.count++;pileVis(j.dst);}else{h.carry.length=0;}if(!h.carry.length)h.job=null;}
+      if(h.carry.length){if(j.dst.count<j.dst.max){h.carry.pop();j.dst.count++;pileVis(j.dst);}if(!h.carry.length)h.job=null;}   // a full stand: wait beside it, never drop the load
       else{if(j.inf){h.carry=[1,1,1];}else if(j.src.count>=1){const n=Math.min(3,j.src.count);j.src.count-=n;h.carry=new Array(n).fill(1);pileVis(j.src);}else h.job=null;}}}
     h.per.g.position.set(h.x,height(h.x,h.z),h.z);h.per.g.rotation.y=h.face;animPerson(h.per,dt,sp,h.carry.length?'carry':sp?'walk':'idle');}}
 /* ---------- pilgrims ---------- */
@@ -120,8 +124,9 @@ function stepPilgrims(dt,sim){for(const p of PIL){if(!p.on)continue;let sp=0;con
   for(const k in STD){const s=STD[k];if(!standOpen(k)||!s.q.length)continue;const p=s.q[0];
     if(sim&&p.st==='q'&&s.z.count>0){s.t+=dt;if(s.t>.9){s.t=0;serve(s);}}else s.t=0;}}
 /* ---------- seasons ---------- */
-function seasonDone(){D.meta.between=1;const s=D.meta.season,bonus=20*s;award(bonus);ssave();
-  setTimeout(()=>{if(R.ch!==MCH)return;state='ui';sfx.build();hap('heavy');
+let metaSess=0,metaLive=false;
+function seasonDone(){D.meta.between=1;const s=D.meta.season,bonus=20*s;award(bonus);ssave();const sid=metaSess;
+  setTimeout(()=>{if(sid!==metaSess||!metaLive||R.ch!==MCH||state!=='play'||!KS.hidden)return;state='ui';sfx.build();hap('heavy');
     sheet(`<span class="ic">🌙</span><p class="eb">${CH[MCH].name}</p><h2>${L2('Hac mevsimi '+s+' tamamlandı!','Pilgrimage season '+s+' complete!')}</h2>
       <div class="kstats"><div>${D.meta.ss}<small>${L2('İkram','Served')}</small></div><div>${D.meta.ms}<small>${L2('Bekleyip giden','Left waiting')}</small></div><div>🪙 +${bonus}<small>${L2('Mevsim hediyesi','Season gift')}</small></div></div>
       <div class="learn"><b>📜 ${L2('Bunu biliyor muydun?','Did you know?')}</b>${SEASON_FACTS[(s-1)%SEASON_FACTS.length]}</div>
@@ -137,18 +142,21 @@ const SEASON_FACTS=[
   L2('Mekke\'de tarım yoktu; hurma, un ve et kervanlarla gelirdi.','Mecca had no farmland; dates, flour and meat came by caravan.')];
 /* ---------- away earnings: only hired helpers work while you are gone ---------- */
 function awayEarnings(){const m=D.meta,now=Date.now();const hs=['saka','hurmaci','cirak'].filter(MU);
-  if(!hs.length||!m.lastT||now<=m.lastT){m.lastT=now;return null;}
+  if(!m.lastT){m.lastT=now;return null;}if(now<=m.lastT)return null;   // a clock set back earns nothing and does not move the mark back
+  if(!hs.length){m.lastT=now;return null;}
   const secs=Math.min(7200,(now-m.lastT)/1000);m.lastT=now;if(secs<120)return null;
   const per=Math.floor(secs/20);const price={saka:2,hurmaci:4,cirak:6};let n=0,c=0;for(const h of hs){n+=per;c+=per*price[h];}
   c=Math.round(c*.5);D.coins+=c;m.earned+=c;m.served+=n;ssave();return {n,c,mins:Math.round(secs/60)};}
 /* ---------- entering / leaving ---------- */
 function startMeta(){if(!D.stars[NCH]){showMap();return;}if(D.run){D.run=null;}
   auInit();coinIcon();musicStart();cleanupChapter();KM.hidden=true;KT.hidden=true;titleEl.hidden=true;closeSheet();SITE.on=true;started=true;build();buildMeta();makeUpgradeWorkers();
-  R={ch:MCH,t:0,done:true,n:0,coins:0,good:0,bank:{},water:0,thirstT:0,thirsty:false,maxAnger:0,course:0,inCourse:0};stack=[];stackVis();syncPads();
+  R={ch:MCH,t:0,done:true,n:0,coins:0,good:0,bank:{},water:0,thirstT:0,thirsty:false,maxAnger:0,course:0,inCourse:0};stack=(D.meta.carry||[]).slice(0,metaCap());stackVis();syncPads();
   for(const z of ZONES){if(!z.chs.includes(MCH)){continue;}z.t=0;}
   const st=D.meta.stock;STD.w.z.count=st.w;STD.d.z.count=st.d;STD.b.z.count=st.b;Z.mdates.count=st.dates||12;Z.mflour.count=st.flour||9;Z.oven.count=st.oven;Z.ovenOut.count=st.ovenOut;
   for(const k in STD){STD[k].cash=D.meta.cash[k]||0;STD[k].q.length=0;coinVis(STD[k]);}
   applyMeta();for(const z of ZONES)if(z.chs.includes(MCH)&&z.pileG)pileVis(z);
+  const JOB_OF={water:()=>({src:Z.well,dst:STD.w.z,item:'water',inf:true}),dates:()=>({src:Z.mdates,dst:STD.d.z,item:'dates'}),bread:()=>({src:Z.ovenOut,dst:STD.b.z,item:'bread'}),flour:()=>({src:Z.mflour,dst:Z.oven,item:'flour'})};
+  for(const h of HELP){const v=D.meta.hc&&D.meta.hc[h.id];if(v&&v.n>0&&JOB_OF[v.item]){h.job=JOB_OF[v.item]();h.carry=new Array(v.n).fill(1);}}metaLive=true;
   kaaba({old:false,rubble:false,green:false,scaffold:false,wallH:8.7,stone:true,roof:true,door:true,hijr:true});setTime('asr');RAIN.target=0;flood.visible=false;resetOld();
   metaG.visible=true;baker.g.visible=true;HELP.forEach(h=>h.per.g.visible=true);
   hooks.step=metaStep;hooks.beat=metaBeat;hooks.cap=metaCap;placeHero(16.5,6.5);cam.yaw=Math.atan2(P.x,P.z);syncMPads();
@@ -157,10 +165,13 @@ function startMeta(){if(!D.stars[NCH]){showMap();return;}if(D.run){D.run=null;}
   if(aw){state='ui';sheet(`<span class="ic">🫗</span><p class="eb">${CH[MCH].name}</p><h2>${L2('Hoş geldin!','Welcome back!')}</h2><p>${L2(`Sen yokken (${aw.mins} dk) yardımcıların ${aw.n} ikram yaptı.`,`While you were away (${aw.mins} min) your helpers served ${aw.n} times.`)}</p><div class="kstats"><div>🪙 +${aw.c}<small>${L2('Bereket','Bereket')}</small></div></div><div class="kbtns"><button class="kbtn" id="kw-ok" data-back>${L2('Devam','Continue')}</button></div>`,c=>{c.querySelector('#kw-ok').onclick=()=>{closeSheet();state='play';};});}
   else toast(CH[MCH].task,5);}
 function leaveMeta(){if(!metaBuilt)return;saveMeta();for(const p of PIL){p.on=false;p.per.g.visible=false;}for(const k in STD)STD[k].q.length=0;
-  metaG.visible=false;baker.g.visible=false;HELP.forEach(h=>{h.per.g.visible=false;h.carry.length=0;h.job=null;});Z.mdates.camel.g.visible=false;for(const p of MPADS.splice(0))scene.remove(p.mesh);}
+  metaG.visible=false;baker.g.visible=false;HELP.forEach(h=>{h.per.g.visible=false;h.carry.length=0;h.job=null;});Z.mdates.camel.g.visible=false;for(const p of MPADS.splice(0))killPad(p.mesh);metaLive=false;metaSess++;}
 function saveMeta(){if(!metaBuilt)return;const st=D.meta.stock;st.w=STD.w.z.count;st.d=STD.d.z.count;st.b=STD.b.z.count;st.dates=Z.mdates.count;st.flour=Z.mflour.count;st.oven=Z.oven.count;st.ovenOut=Z.ovenOut.count;
-  for(const k in STD)D.meta.cash[k]=STD[k].cash;D.meta.lastT=Date.now();}
+  for(const k in STD)D.meta.cash[k]=STD[k].cash;D.meta.lastT=Math.max(D.meta.lastT||0,Date.now());
+  if(metaLive){D.meta.carry=stack.filter(t=>ITEM_STAND[t]||t==='flour');D.meta.hc={};for(const h of HELP)if(h.carry.length&&h.job)D.meta.hc[h.id]={item:h.job.item,n:h.carry.length};}}
 {const cc0=cleanupChapter;cleanupChapter=function(){if(R.ch===MCH)leaveMeta();cc0();};}
+PRESAVE.push(()=>{if(metaLive&&R.ch===MCH)saveMeta();});
+function metaDst(z,type){if(R.ch!==MCH||!metaBuilt)return null;if(type==='dates'&&z===Z.mdates)return STD.d.z;if(type==='flour'&&z===Z.mflour)return Z.oven;if(type==='bread'&&z===Z.ovenOut)return STD.b.z;return null;}
 {const sc0=startChapter;startChapter=function(n){if(n===MCH){startMeta();return;}sc0(n);};}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&R.ch===MCH&&SITE.on){saveMeta();ssave();}});
 addEventListener('pagehide',()=>{if(R.ch===MCH&&SITE.on){saveMeta();ssave();}});
@@ -178,12 +189,14 @@ function metaStep(dt,playing){const sim=dt>0;cutter.forEach(c=>c.g.visible=false
   for(const k in STD){const s=STD[k];s.g.visible=standOpen(k);s.coins.visible=s.g.visible;}}
 function metaBeat(top,cap,take,give){
   if(inZ(Z.well)&&stack.length<cap&&(!stack.length||stack[0]==='water')){stack.push('water');sfx.pour();}
+  if(putBack(top,'dates',Z.mdates,STD.d.z)||putBack(top,'flour',Z.mflour,Z.oven)||putBack(top,'bread',Z.ovenOut,STD.b.z))return;
   if(inZ(Z.mdates))take(Z.mdates,'dates');if(inZ(Z.mflour))take(Z.mflour,'flour');if(inZ(Z.oven))give(Z.oven,'flour');if(inZ(Z.ovenOut))take(Z.ovenOut,'bread');
   for(const k of openStands()){const s=STD[k];if(!inZ(s.z))continue;give(s.z,s.item);
     if(s.cash>0){const c=s.cash;s.cash=0;award(c);coinVis(s);coinsFly(Math.min(6,1+Math.floor(c/6)),s.coins.position.x,s.coins.position.y,s.coins.position.z);ftext('+'+c+' 🪙',s.z.x,2.4,s.z.z,'#ffd75e');sfx.good();hap();}}}
 /* ---------- arrow + HUD ---------- */
 {const st0=siteTarget;siteTarget=function(){if(R.ch!==MCH)return st0();if(state!=='play'||R.done)return null;const top=stack[stack.length-1];
-  if(top==='flour')return ZT(Z.oven);if(top&&ITEM_STAND[top]&&standOpen(ITEM_STAND[top]))return ZT(STD[ITEM_STAND[top]].z);
+  if(top==='flour')return Z.oven.count>=Z.oven.max?BACK(Z.mflour):ZT(Z.oven);
+  if(top&&ITEM_STAND[top]&&standOpen(ITEM_STAND[top])){const z=STD[ITEM_STAND[top]].z;if(z.count>=z.max&&top!=='water')return BACK(top==='dates'?Z.mdates:Z.ovenOut);return ZT(z);}
   let best=null,bs=-1;for(const k of openStands()){const s=STD[k];const u=(s.q.length+1)*(s.z.count<2?3:1)/(1+s.z.count)+(s.cash>=24?2:0);if(u>bs){bs=u;best=k;}}
   if(!best)return ZT(Z.well);const s=STD[best];if(s.cash>=24&&s.z.count>=2)return ZT(s.z);
   if(best==='w')return ZT(Z.well);if(best==='d')return ZT(Z.mdates);return Z.ovenOut.count>0?ZT(Z.ovenOut):ZT(Z.mflour);};}
@@ -204,8 +217,7 @@ function metaIntro(){sheet(`<span class="ic">🫖</span><p class="eb">${L2('Hik�
   if(!lock){path.querySelectorAll('.knode.cur').forEach(n=>n.classList.remove('cur'));b.classList.add('cur');setTimeout(()=>b.scrollIntoView({block:'center'}),40);}};}
 /* the title's PLAY goes to the map when the story is done (the map offers both) */
 Object.assign(window.__site,{startMeta,leaveMeta,STD,MUPG,PIL:()=>PIL.filter(p=>p.on).map(p=>({st:p.st,stand:p.stand.k,x:p.x,z:p.z})),HELP:()=>HELP.map(h=>({id:h.id,x:h.x,z:h.z,carry:h.carry.length})),
-  meta:()=>D.meta,seasonTarget,awayEarnings,MPADS:()=>MPADS.map(p=>p.u.id),metaCap,saveMeta,startChapter,showMap,showStory,
+  meta:()=>D.meta,metaLive:()=>metaLive,metaSess:()=>metaSess,seasonDone:()=>seasonDone(),seasonTarget,awayEarnings,MPADS:()=>MPADS.map(p=>p.u.id),metaCap,saveMeta,startChapter,showMap,showStory,
   spawn:()=>spawnPilgrim(),setStock:(k,n)=>{STD[k].z.count=n;pileVis(STD[k].z);}});
 /* ---------- one late check after everything loaded: a context-loss reload resumes play ---------- */
 try{if(sessionStorage.getItem('kabe-resume')){sessionStorage.removeItem('kabe-resume');if(D.run&&MODE!=='p2'&&!KT.hidden)setTimeout(()=>showStory(D.run.ch),200);}}catch(_){}
-})();

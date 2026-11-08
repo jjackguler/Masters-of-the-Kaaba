@@ -1,0 +1,12 @@
+node_modules/
+www/
+android/app/src/main/assets/public/
+ios/App/App/public/
+android/capacitor-cordova-android-plugins/
+ios/capacitor-cordova-ios-plugins/
+build/
+.gradle/
+Pods/
+xcuserdata/
+*.keystore
+*.jks

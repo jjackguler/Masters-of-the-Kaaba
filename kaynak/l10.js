@@ -63,14 +63,16 @@ function screech(){if(!AU.ctx)return;const c=AU.ctx,o=c.createOscillator(),g=c.c
 function hiss(){nz(.9,5200,.6,.18,'highpass');}
 
 /* ---------- Chapter 1 opening: the flood ---------- */
+let FULL_INTRO=false;   // chapter 1 opens with a ~10 s short version; the full 19 s intro is one tap away on the story card
 function clipFlood(done){setTime('night');RAIN.target=1;RAIN.amt=1;flood.visible=true;kaaba({old:true,wallH:0,rubble:false,green:false,scaffold:false,stone:false,roof:false,door:false,hijr:false});
-  anime([
+  const full=FULL_INTRO;FULL_INTRO=false;const pick=sh=>full?sh:[Object.assign({},sh[0],{d:3}),sh[2],sh[4]];
+  anime(pick([
     {d:4.2,from:{p:KV(0,60,90),l:KV(0,0,0)},to:{p:KV(10,22,40),l:KV(0,2,0)},title:[L2('Mekke · M.S. 605','Mecca · 605 CE'),NAME],tint:'rgba(20,30,60,.25)',vig:.5},
     {d:4,from:{p:KL(0,7,-22),l:KL(0,2,0)},to:{p:KL(2,5,-16),l:KL(0,2.5,0)},vig:.4,bubbles:[{nar:true,t:L2("Bu, Kâbe. Hz. İbrâhim'in yaptığı ilk ev. Duvarları bir adam boyu, damı yok.","This is the Kaaba, the first house, built by Prophet Ibrahim. Its walls are only a man's height, and it has no roof.")}]},
     {d:3.4,from:{p:KV(-22,16,-26),l:KV(0,0,0)},to:{p:KV(-15,10,-18),l:KV(0,.6,0)},start:()=>{flood.visible=true;flood.scale.setScalar(1.35);},speed:1,impact:L2('SEL!','FLOOD!'),flash:'#cfe0ff',shake:.6,sfx:()=>sfx.thunder(),bubbles:[{nar:true,t:L2('Bir kış gecesi dağlardan dev bir sel indi ve vadiyi doldurdu.','One winter night a great flood rushed down from the mountains and filled the valley.')}]},
     {d:4,from:{p:KV(11,3,-7),l:KV(0,2.5,0)},to:{p:KV(8,2.2,-5),l:KV(-1,2.8,0)},flash:'#fff',sfx:()=>sfx.thunder(),bubbles:[{nar:true,t:L2("Sular Kâbe'nin harçsız duvarlarını çatlattı. Evler çamura gömüldü.","The water cracked the Kaaba's mortarless walls. Houses were buried in mud.")}]},
     {d:3.6,from:{p:KV(26,6,26),l:KV(22,1,20)},to:{p:KV(24,4,22),l:KV(20,1,18)},tint:'rgba(20,30,60,.2)',bubbles:[{who:L2('Bir anne','A mother'),t:L2('Evimiz çamurla doldu! Biri yardım etsin!','Our house is full of mud! Somebody help!'),at:'tl'},{nar:true,t:L2('Sen genç bir Mekkelisin. Önce komşularına yardım et.','You are a young Meccan. First, help your neighbours.'),delay:1.6}]},
-  ],()=>{flood.scale.setScalar(1);if(done)done();});}
+  ]),()=>{flood.scale.setScalar(1);if(done)done();});}
 /* ---------- Chapter 1 ending: the council, the snake and the eagle ---------- */
 function clipCouncil(done){const h=NAMED.e_nedve,nd=doorPt(h),out=KV(nd.x-h.x,0,nd.z-h.z).normalize(),side=KV(-out.z,0,out.x);setTime('eve');RAIN.target=0;
   const NV=(o,s,y)=>KV(nd.x+out.x*o+side.x*s,nd.y+y,nd.z+out.z*o+side.z*s);

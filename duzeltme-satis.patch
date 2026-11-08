@@ -1,0 +1,390 @@
+--- /home/claude/kabe/l9.pre3.js	2026-11-07 20:41:50.052434145 -0500
++++ l9.js	2026-11-07 21:23:58.378650528 -0500
+@@ -59,7 +59,7 @@
+   const o=new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshBasicMaterial({color:0x5a3a10,transparent:true,opacity:.55,depthWrite:false}));o.rotation.x=-Math.PI/2;o.scale.setScalar(1.18);o.position.y=-.01;o.renderOrder=2;
+   arrowG.add(o,m);scene.add(arrowG);arrowG.visible=false;}
+ function stepArrow(t){if(!SITE.on||state!=='play'||!t){arrowG.visible=false;return;}const dx=t.x-P.x,dz=t.z-P.z,d=Math.hypot(dx,dz);if(d<3.2){arrowG.visible=false;return;}
+-  arrowG.visible=true;const k=1.6+Math.sin(clock*6)*.15;arrowG.position.set(P.x+dx/d*k,P.y+.08,P.z+dz/d*k);arrowG.rotation.y=Math.atan2(dx,dz)+Math.PI;arrowG.scale.setScalar(1+Math.sin(clock*6)*.06);}
++  arrowG.visible=true;const bob=(typeof RM==='function'&&RM())?0:1;const k=1.6+Math.sin(clock*6)*.15*bob;arrowG.position.set(P.x+dx/d*k,P.y+.08,P.z+dz/d*k);arrowG.rotation.y=Math.atan2(dx,dz)+Math.PI;arrowG.scale.setScalar(1+Math.sin(clock*6)*.06*bob);}
+ 
+ /* ---------- site data ---------- */
+ const COURSES=[{t:'stone',n:12,h:1.6},{t:'wood',n:8,h:3.0},{t:'stone',n:14,h:4.6},{t:'wood',n:10,h:6.0},{t:'stone',n:16,h:7.4},{t:'wood',n:10,h:8.7,roof:true},{t:'wood',n:6,door:true}];
+@@ -134,8 +134,9 @@
+   {id:'porter2',cost:140,ch:6,x:-26,z:8,icon:'🧔',label:L2('Tahta hamalı','Timber porter'),mk:()=>{porters.push(worker(-28,20,{robe:0x2f5d8a,cloth:0xe9dcc0},'porterW'));}},
+   {id:'fast',cost:180,ch:6,need:'porter2',x:4,z:-30,icon:'🩴',label:L2('Hızlı sandalet','Quick sandals'),apply:()=>{}}];
+ function padsOn(){return R.ch>=3&&R.ch!==4;}
++function killPad(m){scene.remove(m);try{m.geometry.dispose();if(m.material.map)m.material.map.dispose();m.material.dispose();}catch(_){}}
+ function syncPads(){for(const u of UPG){const want=padsOn()&&!D.up[u.id]&&R.ch>=u.ch&&(!u.need||D.up[u.need]);const p=PADS.find(p=>p.u===u);
+-    if(p&&!want){scene.remove(p.mesh);PADS.splice(PADS.indexOf(p),1);}
++    if(p&&!want){killPad(p.mesh);PADS.splice(PADS.indexOf(p),1);}
+     if(!p&&want){const m=new THREE.Mesh(new THREE.CircleGeometry(1.6,40),new THREE.MeshBasicMaterial({map:padTex(u.icon,'★'+u.cost,'#d39a2c'),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4}));
+       m.rotation.x=-Math.PI/2;m.position.set(u.x,height(u.x,u.z)+.07,u.z);scene.add(m);PADS.push({u,mesh:m,paid:D.up['p_'+u.id]||0});}}}
+ let workersMade={};
+@@ -149,7 +150,7 @@
+ /* one ledger for bereket: profile and the running chapter move together (T11) */
+ function award(n){n=Math.max(0,Math.round(n));D.coins+=n;R.coins=(R.coins||0)+n;runDirty=true;}
+ let runDirty=false;
+-function unloadBonus(){if(!unload.z)return;const cap=unload.cap||D.cap;if(unload.n>=4&&unload.n>=cap){const b=unload.n*2;award(b);ftext(L2('TAM YÜK! +','FULL LOAD! +')+b,P.x,P.y+2.4,P.z,'#ffd75e');coinsFly(3,P.x,P.y+1.5,P.z);}unload.z=null;}
++function unloadBonus(){if(!unload.z)return;const cap=unload.cap||D.cap;if(unload.n>=Math.max(2,cap)){const b=unload.n*2;award(b);ftext(L2('TAM YÜK! +','FULL LOAD! +')+b,P.x,P.y+2.4,P.z,'#ffd75e');coinsFly(3,P.x,P.y+1.5,P.z);}unload.z=null;}
+ function zoneOn(z){return z.chs.includes(R.ch)&&(!z.when||z.when());}
+ function bumpUnload(z,n){if(unload.z!==z){unloadBonus();unload={z,n:0,t:0,cap:hooks.cap?hooks.cap():D.cap};}unload.n+=n;unload.t=0;runDirty=true;}
+ function siteStep(dt){if(!SITE.on||!started)return;
+@@ -178,7 +179,7 @@
+   let slow=D.up.fast?1.22:1;for(const p of puddles){p.m.visible=R.ch===6;if(p.m.visible&&Math.hypot(P.x-p.x,P.z-p.z)<p.r){slow*=.55;if(beat&&P.speed>1&&Math.random()<.3)sfx.splash();}}P.slow=slow;
+   if(!playing){stackVis();return;}
+   if(beat){const top=stack[stack.length-1];const cap=hooks.cap?hooks.cap():D.cap;
+-    const take=(z,type)=>{if(z.count>0&&stack.length<cap&&(!stack.length||stack[0]===type)){z.count--;stack.push(type);pileVis(z);tone(HIC[4+stack.length%5],.06,.025);if(stack.length===cap)ftext(L2('DOLU','FULL'),P.x,P.y+2.3,P.z,'#ffd75e');return true;}return false;};
++    const take=(z,type)=>{if(typeof takeBlocked==='function'&&takeBlocked(z,type))return false;if(z.count>0&&stack.length<cap&&(!stack.length||stack[0]===type)){z.count--;stack.push(type);pileVis(z);tone(HIC[4+stack.length%5],.06,.025);if(stack.length===cap)ftext(L2('DOLU','FULL'),P.x,P.y+2.3,P.z,'#ffd75e');return true;}return false;};
+     const give=(z,type)=>{if(stack.length&&stack[stack.length-1]===type&&(z.count||0)<z.max){stack.pop();z.count=(z.count||0)+1;pileVis(z);sfx.thunk();bumpUnload(z,1);return true;}return false;};
+     if(inZ(Z.raw))take(Z.raw,'raw');if(inZ(Z.cutIn))give(Z.cutIn,'raw');if(inZ(Z.cutOut))take(Z.cutOut,'block');
+     if(inZ(Z.rawWood))take(Z.rawWood,'rawwood');if(inZ(Z.carIn))give(Z.carIn,'rawwood');if(inZ(Z.carOut))take(Z.carOut,'beam');
+@@ -190,7 +191,8 @@
+ }
+ function faceW(w,z){w.face=Math.atan2(z.x-w.x,z.z-w.z);w.g.rotation.y=w.face;}
+ const SAVE_VER=2;
+-function ssave(){try{D.ver=SAVE_VER;D.codex=Object.keys(G.found||{});const j=JSON.stringify(D);localStorage.setItem(SKEY,j);localStorage.setItem(SKEY+'-bak',j);runDirty=false;return true;}catch(e){console.warn('save failed',e);saveFailed=true;return false;}}
++const PRESAVE=[];
++function ssave(){for(const f of PRESAVE){try{f();}catch(e){console.warn('presave',e);}}try{D.ver=SAVE_VER;D.codex=Object.keys(G.found||{});const j=JSON.stringify(D);localStorage.setItem(SKEY,j);localStorage.setItem(SKEY+'-bak',j);runDirty=false;return true;}catch(e){console.warn('save failed',e);saveFailed=true;return false;}}
+ let saveFailed=false;
+ const num=(v,d,lo,hi)=>{v=Number(v);if(!isFinite(v))return d;return Math.min(hi,Math.max(lo,v));};
+ function cleanProfile(s){const o={unl:1,stars:{},best:{},coins:0,good:0,cap:4,up:{},tut:0,last:1,codex:[],run:null,meta:null,ver:SAVE_VER};if(!s||typeof s!=='object')return o;
+@@ -202,7 +204,7 @@
+   // capacity is derived from purchased upgrades, so a damaged number can not give infinite carry
+   o.cap=4+(o.up.cap1?2:0)+(o.up.cap2?2:0);
+   if(Array.isArray(s.codex))o.codex=s.codex.filter(x=>typeof x==='string'&&CX[x]);
+-  if(s.run&&typeof s.run==='object'&&s.run.ch>=1&&s.run.ch<=8&&s.run.ch<=Math.max(o.unl,o.done?8:0))o.run=s.run;
++  if(s.run&&typeof s.run==='object'&&Number.isInteger(s.run.ch)&&s.run.ch>=1&&s.run.ch<=7&&s.run.ch<=Math.max(o.unl,o.done?8:0))o.run=s.run;
+   if(s.meta&&typeof s.meta==='object')o.meta=s.meta;
+   return o;}
+ function sload(){let s=null,src='none';for(const k of [SKEY,SKEY+'-bak']){try{const t=localStorage.getItem(k);if(t){s=JSON.parse(t);src=k;break;}}catch(_){s=null;}}
+--- /home/claude/kabe/l10.pre3.js	2026-11-07 20:41:50.054092246 -0500
++++ l10.js	2026-11-07 21:23:58.378877146 -0500
+@@ -63,14 +63,16 @@
+ function hiss(){nz(.9,5200,.6,.18,'highpass');}
+ 
+ /* ---------- Chapter 1 opening: the flood ---------- */
++let FULL_INTRO=false;   // chapter 1 opens with a ~10 s short version; the full 19 s intro is one tap away on the story card
+ function clipFlood(done){setTime('night');RAIN.target=1;RAIN.amt=1;flood.visible=true;kaaba({old:true,wallH:0,rubble:false,green:false,scaffold:false,stone:false,roof:false,door:false,hijr:false});
+-  anime([
++  const full=FULL_INTRO;FULL_INTRO=false;const pick=sh=>full?sh:[Object.assign({},sh[0],{d:3}),sh[2],sh[4]];
++  anime(pick([
+     {d:4.2,from:{p:KV(0,60,90),l:KV(0,0,0)},to:{p:KV(10,22,40),l:KV(0,2,0)},title:[L2('Mekke · M.S. 605','Mecca · 605 CE'),NAME],tint:'rgba(20,30,60,.25)',vig:.5},
+     {d:4,from:{p:KL(0,7,-22),l:KL(0,2,0)},to:{p:KL(2,5,-16),l:KL(0,2.5,0)},vig:.4,bubbles:[{nar:true,t:L2("Bu, Kâbe. Hz. İbrâhim'in yaptığı ilk ev. Duvarları bir adam boyu, damı yok.","This is the Kaaba, the first house, built by Prophet Ibrahim. Its walls are only a man's height, and it has no roof.")}]},
+     {d:3.4,from:{p:KV(-22,16,-26),l:KV(0,0,0)},to:{p:KV(-15,10,-18),l:KV(0,.6,0)},start:()=>{flood.visible=true;flood.scale.setScalar(1.35);},speed:1,impact:L2('SEL!','FLOOD!'),flash:'#cfe0ff',shake:.6,sfx:()=>sfx.thunder(),bubbles:[{nar:true,t:L2('Bir kış gecesi dağlardan dev bir sel indi ve vadiyi doldurdu.','One winter night a great flood rushed down from the mountains and filled the valley.')}]},
+     {d:4,from:{p:KV(11,3,-7),l:KV(0,2.5,0)},to:{p:KV(8,2.2,-5),l:KV(-1,2.8,0)},flash:'#fff',sfx:()=>sfx.thunder(),bubbles:[{nar:true,t:L2("Sular Kâbe'nin harçsız duvarlarını çatlattı. Evler çamura gömüldü.","The water cracked the Kaaba's mortarless walls. Houses were buried in mud.")}]},
+     {d:3.6,from:{p:KV(26,6,26),l:KV(22,1,20)},to:{p:KV(24,4,22),l:KV(20,1,18)},tint:'rgba(20,30,60,.2)',bubbles:[{who:L2('Bir anne','A mother'),t:L2('Evimiz çamurla doldu! Biri yardım etsin!','Our house is full of mud! Somebody help!'),at:'tl'},{nar:true,t:L2('Sen genç bir Mekkelisin. Önce komşularına yardım et.','You are a young Meccan. First, help your neighbours.'),delay:1.6}]},
+-  ],()=>{flood.scale.setScalar(1);if(done)done();});}
++  ]),()=>{flood.scale.setScalar(1);if(done)done();});}
+ /* ---------- Chapter 1 ending: the council, the snake and the eagle ---------- */
+ function clipCouncil(done){const h=NAMED.e_nedve,nd=doorPt(h),out=KV(nd.x-h.x,0,nd.z-h.z).normalize(),side=KV(-out.z,0,out.x);setTime('eve');RAIN.target=0;
+   const NV=(o,s,y)=>KV(nd.x+out.x*o+side.x*s,nd.y+y,nd.z+out.z*o+side.z*s);
+--- /home/claude/kabe/l11.pre3.js	2026-11-07 20:41:50.056280686 -0500
++++ l11.js	2026-11-07 21:23:58.379048594 -0500
+@@ -167,7 +167,7 @@
+ function ch4Step(dt,playing){if(!F4.length)return;const T4=CH[4].par;
+   F4.forEach((f,i)=>{if(playing){const r=1.55+i*.18+.7*Math.sin(R.t*.35+i*1.7);f.anger=Math.min(100,f.anger+Math.max(.5,r)*dt);R.maxAnger=Math.max(R.maxAnger,f.anger);}
+     f.men.forEach(m=>animPerson(m,dt,0,f.anger>65?'angry':f.anger<35?'idle':'talk'));
+-    const a=abars[i];if(a){const s=scr(f.x,3.1,f.z);a.style.display=s.ok&&state==='play'?'':'none';a.style.left=s.x+'px';a.style.top=s.y+'px';a.querySelector('i').style.width=f.anger+'%';a.classList.toggle('hot',f.anger>75);}
++    const a=abars[i];if(a){const s=scr(f.x,3.1,f.z);const dsp=s.ok&&state==='play'?'':'none';if(a.__d!==dsp){a.__d=dsp;a.style.display=dsp;}if(dsp===''){const x=Math.round(s.x),y=Math.round(s.y);if(a.__x!==x||a.__y!==y){a.__x=x;a.__y=y;a.style.left=x+'px';a.style.top=y+'px';}const w=Math.round(f.anger);if(a.__w!==w){a.__w=w;(a.__i||(a.__i=a.querySelector('i'))).style.width=w+'%';}const hot=f.anger>75;if(a.__h!==hot){a.__h=hot;a.classList.toggle('hot',hot);}}}
+     });
+   if(!playing)return;const left=Math.max(0,T4-R.t);
+   if(left<=0){TIMER.hidden=true;chapterDone();return;}   // rule: when dawn and a full bar happen in the same frame, dawn wins
+--- /home/claude/kabe/l12.pre3.js	2026-11-07 20:41:50.057906324 -0500
++++ l12.js	2026-11-07 21:23:58.379197374 -0500
+@@ -40,8 +40,8 @@
+ {const sh0=sheet;sheet=function(h,f){resetInput();sh0(h,f);extendSheet();};}
+ {const an0=anime;anime=function(shots,done){resetInput();if(RM())shots=shots.map(s=>Object.assign({},s,{shake:0,speed:0,flash:null}));an0(shots,done);};}
+ /* ---------- T16: audio follows the app lifecycle ---------- */
+-function audioSuspend(){try{if(AU.ctx&&AU.ctx.state==='running')AU.ctx.suspend();}catch(_){}}
+-function audioResume(){try{if(AU.ctx&&AU.ctx.state!=='running'&&AU.ctx.state!=='closed')AU.ctx.resume();}catch(_){}}
++function audioSuspend(){try{if(AU.ctx&&AU.ctx.state==='running')AU.ctx.suspend().catch(()=>{});}catch(_){}}
++function audioResume(){try{if(AU.ctx&&AU.ctx.state!=='running'&&AU.ctx.state!=='closed')AU.ctx.resume().catch(()=>{});}catch(_){}}
+ ['pointerdown','keydown','touchend'].forEach(ev=>addEventListener(ev,()=>{if(!document.hidden)audioResume();},{capture:true,passive:true}));
+ /* ---------- T06: resumable chapter runs ---------- */
+ const ITEMS_OK=new Set(['mud','rubble','raw','block','rawwood','beam','water','dates','flour','bread']);
+@@ -49,9 +49,10 @@
+   course:R.course,inCourse:R.inCourse,bankTip:R.bankTip||0,stack:stack.slice(),zones:ZONES.map(z=>z.count|0),fam:families.map(f=>[f.z.count|0,f.happy?1:0]),
+   fires:F4.map(f=>Math.round(f.anger*10)/10),px:+P.x.toFixed(2),pz:+P.z.toFixed(2),at:Date.now()};}
+ function canSnap(){return SITE.on&&R.ch>=1&&R.ch<=NCH&&!R.done&&!R.ended&&state==='play';}
+-let snapT=0;
+-function saveRun(){if(!canSnap())return false;D.run=snapRun();return ssave();}
+-function resumeRun(s){const n=s&&s.ch;if(!(n>=1&&n<=NCH)||n>D.unl){D.run=null;ssave();return false;}
++let snapT=0,runLive=false;
++PRESAVE.push(()=>{if(runLive&&SITE.on&&R.ch>=1&&R.ch<=NCH&&!R.ended)D.run=snapRun();});
++function saveRun(){if(!canSnap())return false;runLive=true;return ssave();}
++function resumeRun(s){const n=s&&s.ch;if(!Number.isInteger(n)||!CH[n]||n<1||n>NCH||n>D.unl){D.run=null;ssave();return false;}
+   auInit();coinIcon();musicStart();cleanupChapter();KM.hidden=true;KT.hidden=true;titleEl.hidden=true;closeSheet();SITE.on=true;started=true;build();makeUpgradeWorkers();
+   setupCh(n);afterIntro(n);const num=(v,d,lo,hi)=>{v=Number(v);return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};const c=CH[n];
+   R.t=num(s.t,0,0,36000);R.n=Math.round(num(s.n,0,0,c.goal||999));R.coins=Math.round(num(s.coins,0,0,1e6));R.good=Math.round(num(s.good,0,0,1e5));
+@@ -88,7 +89,7 @@
+ const padEl=el(`<div id="kpad" hidden role="dialog" aria-live="polite"><span class="i"></span><b></b><button type="button"></button><small></small></div>`);document.body.appendChild(padEl);
+ function padRemain(p){return Math.max(0,p.u.cost-(p.paid||0));}
+ function buyPad(p){const rem=padRemain(p);if(D.coins<rem)return false;D.coins-=rem;p.paid=p.u.cost;
+-  if(p.buy)p.buy();else{const u=p.u;D.up[u.id]=true;delete D.up['p_'+u.id];if(u.apply)u.apply();makeUpgradeWorkers();scene.remove(p.mesh);const i=PADS.indexOf(p);if(i>=0)PADS.splice(i,1);syncPads();}
++  if(p.buy)p.buy();else{const u=p.u;D.up[u.id]=true;delete D.up['p_'+u.id];if(u.apply)u.apply();makeUpgradeWorkers();killPad(p.mesh);const i=PADS.indexOf(p);if(i>=0)PADS.splice(i,1);syncPads();}
+   sfx.build();hap('heavy');sparkle(p.u.x,1,p.u.z,30);ftext('✓ '+p.u.label,p.u.x,2,p.u.z,'#ffd75e');pop('r-wood');ssave();return true;}
+ function nearestPad(){let b=null,bd=1.9;for(const f of PADSETS)for(const p of f()){const d=Math.hypot(P.x-p.u.x,P.z-p.u.z);if(d<bd){bd=d;b=p;}}return b;}
+ function stepPadUI(){const p=SITE.on&&state==='play'&&KS.hidden&&!R.done?nearestPad():null;
+@@ -101,21 +102,28 @@
+   if(padEl.hidden){padEl.hidden=false;tone(HIC[6],.06,.03);}}
+ padEl.querySelector('button').addEventListener('click',e=>{e.stopPropagation();const p=PADUI.p;if(p&&buyPad(p)){padEl.hidden=true;PADUI.p=null;}});
+ /* ---------- T08: the arrow follows what you are holding ---------- */
++const BACK=z=>{const t=ZT(z);return t&&Object.assign({},t,{n:L2('Geri bırak: ','Put back: ')+t.n});};
+ siteTarget=function(){if(state!=='play'||R.done)return null;const top=stack[stack.length-1],n=R.ch;
+   if(n===1)return top==='mud'?ZT(Z.dump):ZT(nearestMud());
+   if(n===2)return top==='rubble'?ZT(Z.dump):ZT(Z.rubble);
+   if(n===4){if(top!=='water')return ZT(Z.well);let b=null;for(const f of F4)if(!b||f.anger>b.anger)b=f;return b?{x:b.x,z:b.z,n:b.name}:null;}
+   if(top==='water'){if(!R.thirsty)return ZT(Z.well);let c=cutter[0];if(carp&&carp.g.visible&&Math.hypot(P.x-carp.x,P.z-carp.z)<Math.hypot(P.x-c.x,P.z-c.z))c=carp;return {x:c.x,z:c.z,n:L2('Ustalar','Craftsmen')};}
+-  if(top==='raw')return ZT(Z.cutIn);if(top==='rawwood')return ZT(Z.carIn);if(top==='block'||top==='beam')return ZT(Z.wall);
++  if(top==='raw')return Z.cutIn.count>=Z.cutIn.max?BACK(Z.raw):ZT(Z.cutIn);if(top==='rawwood')return Z.carIn.count>=Z.carIn.max?BACK(Z.rawWood):ZT(Z.carIn);if(top==='block'||top==='beam')return ZT(Z.wall);
+   if(R.thirsty)return ZT(Z.well);
+   const c=COURSES[R.course];if(!c)return null;const need=c.t==='stone'?'block':'beam';if((R.bank[need]||0)>0)return ZT(Z.wall);
+   if(c.t==='stone')return Z.cutOut.count>=2||(Z.cutOut.count>0&&Z.raw.count===0)?ZT(Z.cutOut):Z.cutIn.count>=Z.cutIn.max-2&&Z.cutOut.count>0?ZT(Z.cutOut):ZT(Z.raw);
+   return Z.carOut.count>=2||(Z.carOut.count>0&&Z.rawWood.count===0)?ZT(Z.carOut):ZT(Z.rawWood);};
++/* a load can always go back onto its own pile when the place it goes to is full (no dead ends) */
++/* taking more of a load whose only destination is full would only lead to a dead end */
++function takeBlocked(z,type){const dst=type==='raw'&&z===Z.raw?Z.cutIn:type==='rawwood'&&z===Z.rawWood?Z.carIn:(typeof metaDst==='function'?metaDst(z,type):null);return !!dst&&dst.count>=dst.max;}
++function putBack(top,type,src,dst){if(top!==type||!src||!inZ(src)||(dst&&dst.count<dst.max))return false;stack.pop();src.count++;pileVis(src);sfx.thunk();if(stack[stack.length-1]!==type)ftext(L2('Geri bırakıldı','Put back'),P.x,P.y+2.3,P.z);return true;}
++{const ai0=afterIntro;afterIntro=function(n){ai0(n);runLive=true;};}
+ {const cb0=courseBeat;courseBeat=function(top,cap,take,give){
+   if(top==='water'&&!R.thirsty&&inZ(Z.well)){while(stack[stack.length-1]==='water')stack.pop();sfx.pour();top=stack[stack.length-1];}
++  if(putBack(top,'raw',Z.raw,Z.cutIn)||putBack(top,'rawwood',Z.rawWood,Z.carIn))top=stack[stack.length-1];
+   cb0(top,cap,take,give);};}
+ /* ---------- T03-T05 extras ---------- */
+-{const cc0=cleanupChapter;cleanupChapter=function(){cc0();padEl.hidden=true;PADUI.p=null;flights.forEach(f=>{if(f.ghost)scene.remove(f.m);});flights.length=0;};}
++{const cc0=cleanupChapter;cleanupChapter=function(){runLive=false;cc0();padEl.hidden=true;PADUI.p=null;flights.forEach(f=>{if(f.ghost)scene.remove(f.m);});flights.length=0;};}
+ /* ---------- result: say what opened ---------- */
+ {const sr0=showResult;showResult=function(n,s,first){sr0(n,s,first);const card=$('#kcard'),k=card&&card.querySelector('.kbtns');if(!k)return;
+   const nx=n<NCH?CH[n+1]:null;const t=nx?L2('Sırada: ','Next: ')+nx.icon+' '+L2('Bölüm ','Chapter ')+(n+1)+' · '+nx.name:L2('Açıldı: 🫖 Hacılara Hizmet: hikâyeden sonra sınırsız mevsimler','Unlocked: 🫖 Serving the Pilgrims: endless seasons after the story');
+@@ -201,6 +209,7 @@
+ if(KP.scaffold&&KP.scaffold.material){const m=KP.scaffold.material;m.transparent=true;m.opacity=.55;m.depthWrite=false;m.needsUpdate=true;}
+ /* ---------- per-frame glue ---------- */
+ {const es0=extraStep;extraStep=function(dt){es0(dt);if(!SITE.on)return;stepFlights(Math.min(dt,.05));stepPadUI();
++  if(canSnap())runLive=true;stepChip(dt);
+   if(canSnap()&&gameActive()){snapT+=dt;if(snapT>2){snapT=0;saveRun();}}else if(!canSnap()&&runDirty&&state!=='play'){ssave();}};}
+ /* ---------- cutscene objects: everything that existed before any cutscene is shared ---------- */
+ isSharedMat(null);
+@@ -208,9 +217,26 @@
+ for(const g of [typeof stoneGeo!=='undefined'?stoneGeo:null,typeof plankGeo!=='undefined'?plankGeo:null,typeof sackGeo!=='undefined'?sackGeo:null])if(g)SHARED_GEO.add(g);
+ for(const k in mat){const m=mat[k];if(m&&m.map)SHARED_MATS.add(m.map);}
+ [blockMat,jugMat].forEach(m=>{if(m){SHARED_MATS.add(m);if(m.map)SHARED_MATS.add(m.map);}});
++/* ---------- T2: what is happening right here, in words + icon ---------- */
++const ACCEPTS=new Map();function accepts(z){if(!ACCEPTS.size&&Z.cutIn){ACCEPTS.set(Z.cutIn,['raw']);ACCEPTS.set(Z.carIn,['rawwood']);ACCEPTS.set(Z.wall,['block','beam']);ACCEPTS.set(Z.dump,['mud','rubble']);}return ACCEPTS.get(z);}
++{const st=document.createElement('style');st.textContent=`#kchip{position:fixed;right:16px;bottom:calc(112px + env(safe-area-inset-bottom));z-index:25;max-width:min(240px,calc(100vw - 32px));background:rgba(42,33,27,.88);color:#fff6e0;border-radius:999px;padding:8px 14px;font:700 14px/1.2 var(--f-ui,system-ui);box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none}#kchip[hidden]{display:none}#kchip.warn{background:rgba(150,40,30,.92)}`;document.head.appendChild(st);}
++const chipEl=el('<div id="kchip" hidden role="status" aria-live="polite"></div>');document.body.appendChild(chipEl);
++let chipLen=0,chipGrow=0,chipShrink=0;
++function stepChip(dt){const now=performance.now()/1000;if(stack.length>chipLen)chipGrow=now+.6;else if(stack.length<chipLen)chipShrink=now+.6;chipLen=stack.length;
++  let txt='',warn=false;
++  if(SITE.on&&state==='play'&&!R.done&&padEl.hidden){let z=null;for(const q of ZONES){if(q.mesh.visible&&inZ(q)){z=q;break;}}
++    if(z){const top=stack[stack.length-1],acc=accepts(z),cap=hooks.cap?hooks.cap():D.cap;
++      if(chipGrow>now)txt='⬆ '+L2('Yükleniyor','Loading');
++      else if(chipShrink>now)txt='⬇ '+L2('Teslim ediliyor','Delivering');
++      else if(acc&&top&&!acc.includes(top)){txt='✖ '+L2('Yanlış malzeme','Wrong material');warn=true;}
++      else if(acc&&top&&z.count>=z.max){txt='⛔ '+L2('Dolu: önce boşalsın','Full: wait or put back');warn=true;}
++      else if(!acc&&!top&&z.count===0&&z.item)txt='⏳ '+L2('Hazırlanıyor, bekle','Being prepared, wait');
++      else if(!acc&&top&&stack.length>=cap)txt='🎒 '+L2('Elin dolu','Hands full');}}
++  if(!txt){if(!chipEl.hidden)chipEl.hidden=true;return;}
++  setT(chipEl,txt);chipEl.classList.toggle('warn',warn);if(chipEl.hidden)chipEl.hidden=false;}
+ /* ---------- debug surface for tests ---------- */
+ Object.assign(window.__site,{startChapter,showStory,saveRun,resumeRun,snapRun,goBack,resetInput,siteTarget:()=>siteTarget(),gameActive,PADUI,buyPad,nearestPad,award,ssave,sload,cleanProfile,
+-  flights:()=>flights.length,FIRES:()=>FIRES.length,mem:()=>Object.assign({},renderer.info.memory),setStack:a=>{stack=a.slice();stackVis();},unload:()=>unload,
++  flights:()=>flights.length,arrowScale:()=>+arrowG.scale.x.toFixed(4),chip:()=>chipEl.hidden?'':chipEl.textContent,runLive:()=>runLive,FIRES:()=>FIRES.length,mem:()=>Object.assign({},renderer.info.memory),setStack:a=>{stack=a.slice();stackVis();},unload:()=>unload,
+   zonesOf:()=>Object.fromEntries(Object.entries(Z).filter(([k,v])=>v&&v.mesh).map(([k,v])=>[k,{x:v.x,z:v.z,count:v.count,vis:v.mesh.visible}])),
+   setP:(x,z)=>{P.x=x;P.z=z;P.y=height(x,z);},getP:()=>({x:P.x,z:P.z}),state:()=>state,hud:()=>({ch:qCh.textContent,goal:qGoal.textContent,sub:qSub.textContent,stone:hEl.st.textContent,coins:hEl.co.textContent}),
+   marker:()=>({hidden:marker.hidden,t:markerTxt.textContent,r:marker.getBoundingClientRect().toJSON()})});
+--- /home/claude/kabe/l13.pre3.js	2026-11-07 20:41:50.059620997 -0500
++++ l13.js	2026-11-07 21:23:58.379322870 -0500
+@@ -25,6 +25,8 @@
+   if(m.up&&typeof m.up==='object')for(const u of MUPG)if(m.up[u.id])o.up[u.id]=true;
+   for(const k of ['w','d','b','dates','flour','oven','ovenOut'])o.stock[k]=Math.round(n(m.stock&&m.stock[k],0,0,40));
+   for(const k in STD)o.cash[k]=Math.round(n(m.cash&&m.cash[k],0,0,1e6));
++  const OK=new Set(['water','dates','flour','bread']);o.carry=Array.isArray(m.carry)?m.carry.filter(t=>OK.has(t)).slice(0,12):[];
++  o.hc={};if(m.hc&&typeof m.hc==='object')for(const id of ['saka','hurmaci','cirak']){const v=m.hc[id];if(v&&OK.has(v.item))o.hc[id]={item:v.item,n:Math.round(n(v.n,0,0,3))};}
+   return o;}
+ D.meta=cleanMeta(D.meta);
+ {const cp0=cleanProfile;cleanProfile=function(s){const o=cp0(s);o.meta=cleanMeta(o.meta);return o;};}
+@@ -65,10 +67,11 @@
+   const dome=new THREE.Mesh(new THREE.SphereGeometry(1.2,16,10,0,Math.PI*2,0,Math.PI/2),mat.clay||mat.wood);dome.position.set(ov.x,height(ov.x,ov.z),ov.z);dome.castShadow=true;metaG.add(dome);Z.oven.dome=dome;
+   baker=makePerson({robe:0x8a6a4a,cloth:0xf2e8d5,beard:0x3a2e26,hat:'scarf'});const bs=freeSpot(ov.x,ov.z+1.9,.4);baker.x=bs.x;baker.z=bs.z;baker.g.position.set(bs.x,height(bs.x,bs.z),bs.z);baker.g.rotation.y=Math.PI;scene.add(baker.g);baker.t=0;
+   GATES=[[32,-12],[-31,-8],[-6,31],[24,24]].map(([x,z])=>freeSpot(x,z,.8));
++  ACCEPTS.set(STD.w.z,['water']);ACCEPTS.set(STD.d.z,['dates']);ACCEPTS.set(STD.b.z,['bread']);ACCEPTS.set(Z.oven,['flour']);
+   metaG.visible=false;baker.g.visible=false;}
+ /* ---------- upgrade pads for this layer ---------- */
+ const MPOS=[[17,9],[13.5,12.5],[9.5,14.5]];
+-function syncMPads(){for(const p of MPADS.splice(0))scene.remove(p.mesh);if(R.ch!==MCH)return;
++function syncMPads(){for(const p of MPADS.splice(0))killPad(p.mesh);if(R.ch!==MCH)return;
+   const av=MUPG.filter(u=>!MU(u.id)&&(!u.need||MU(u.need))).slice(0,3);
+   av.forEach((u,i)=>{const s=freeSpot(MPOS[i][0],MPOS[i][1],1.7);u.x=s.x;u.z=s.z;
+     const m=new THREE.Mesh(new THREE.CircleGeometry(1.6,40),new THREE.MeshBasicMaterial({map:padTex(u.icon,'★'+u.cost,'#d39a2c'),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4}));
+@@ -85,9 +88,10 @@
+ function stepHelpers(dt,sim){for(const h of HELP){h.per.g.visible=true;let sp=0;
+     if(!h.job)h.job=HJOB[h.id]();const j=h.job;if(!j){animPerson(h.per,dt,0,'idle');continue;}
+     const t=h.carry.length?j.dst:j.src;const dx=t.x-h.x,dz=t.z-h.z,d=Math.hypot(dx,dz);
+-    if(d>1.1){if(sim){const v=2.6;h.x+=dx/d*v*dt;h.z+=dz/d*v*dt;h.face=Math.atan2(dx,dz);sp=v;collideEnt(h,.3,0);}}
++    if(d>1.1){if(sim){const v=2.6,ox=h.x,oz=h.z,s=Math.min(d,v*dt);h.x+=dx/d*s;h.z+=dz/d*s;h.face=Math.atan2(dx,dz);sp=v;collideEnt(h,.3,0);
++      if(Math.hypot(h.x-ox,h.z-oz)<s*.25){h.stuck=(h.stuck||0)+dt;if(h.stuck>1.2){h.x=ox+dx/d*Math.min(d,1.2);h.z=oz+dz/d*Math.min(d,1.2);h.stuck=0;}}else h.stuck=0;}}
+     else if(sim){h.t+=dt;if(h.t>.35){h.t=0;
+-      if(h.carry.length){if(j.dst.count<j.dst.max){h.carry.pop();j.dst.count++;pileVis(j.dst);}else{h.carry.length=0;}if(!h.carry.length)h.job=null;}
++      if(h.carry.length){if(j.dst.count<j.dst.max){h.carry.pop();j.dst.count++;pileVis(j.dst);}if(!h.carry.length)h.job=null;}   // a full stand: wait beside it, never drop the load
+       else{if(j.inf){h.carry=[1,1,1];}else if(j.src.count>=1){const n=Math.min(3,j.src.count);j.src.count-=n;h.carry=new Array(n).fill(1);pileVis(j.src);}else h.job=null;}}}
+     h.per.g.position.set(h.x,height(h.x,h.z),h.z);h.per.g.rotation.y=h.face;animPerson(h.per,dt,sp,h.carry.length?'carry':sp?'walk':'idle');}}
+ /* ---------- pilgrims ---------- */
+@@ -120,8 +124,9 @@
+   for(const k in STD){const s=STD[k];if(!standOpen(k)||!s.q.length)continue;const p=s.q[0];
+     if(sim&&p.st==='q'&&s.z.count>0){s.t+=dt;if(s.t>.9){s.t=0;serve(s);}}else s.t=0;}}
+ /* ---------- seasons ---------- */
+-function seasonDone(){D.meta.between=1;const s=D.meta.season,bonus=20*s;award(bonus);ssave();
+-  setTimeout(()=>{if(R.ch!==MCH)return;state='ui';sfx.build();hap('heavy');
++let metaSess=0,metaLive=false;
++function seasonDone(){D.meta.between=1;const s=D.meta.season,bonus=20*s;award(bonus);ssave();const sid=metaSess;
++  setTimeout(()=>{if(sid!==metaSess||!metaLive||R.ch!==MCH||state!=='play'||!KS.hidden)return;state='ui';sfx.build();hap('heavy');
+     sheet(`<span class="ic">🌙</span><p class="eb">${CH[MCH].name}</p><h2>${L2('Hac mevsimi '+s+' tamamlandı!','Pilgrimage season '+s+' complete!')}</h2>
+       <div class="kstats"><div>${D.meta.ss}<small>${L2('İkram','Served')}</small></div><div>${D.meta.ms}<small>${L2('Bekleyip giden','Left waiting')}</small></div><div>🪙 +${bonus}<small>${L2('Mevsim hediyesi','Season gift')}</small></div></div>
+       <div class="learn"><b>📜 ${L2('Bunu biliyor muydun?','Did you know?')}</b>${SEASON_FACTS[(s-1)%SEASON_FACTS.length]}</div>
+@@ -137,18 +142,21 @@
+   L2('Mekke\'de tarım yoktu; hurma, un ve et kervanlarla gelirdi.','Mecca had no farmland; dates, flour and meat came by caravan.')];
+ /* ---------- away earnings: only hired helpers work while you are gone ---------- */
+ function awayEarnings(){const m=D.meta,now=Date.now();const hs=['saka','hurmaci','cirak'].filter(MU);
+-  if(!hs.length||!m.lastT||now<=m.lastT){m.lastT=now;return null;}
++  if(!m.lastT){m.lastT=now;return null;}if(now<=m.lastT)return null;   // a clock set back earns nothing and does not move the mark back
++  if(!hs.length){m.lastT=now;return null;}
+   const secs=Math.min(7200,(now-m.lastT)/1000);m.lastT=now;if(secs<120)return null;
+   const per=Math.floor(secs/20);const price={saka:2,hurmaci:4,cirak:6};let n=0,c=0;for(const h of hs){n+=per;c+=per*price[h];}
+   c=Math.round(c*.5);D.coins+=c;m.earned+=c;m.served+=n;ssave();return {n,c,mins:Math.round(secs/60)};}
+ /* ---------- entering / leaving ---------- */
+ function startMeta(){if(!D.stars[NCH]){showMap();return;}if(D.run){D.run=null;}
+   auInit();coinIcon();musicStart();cleanupChapter();KM.hidden=true;KT.hidden=true;titleEl.hidden=true;closeSheet();SITE.on=true;started=true;build();buildMeta();makeUpgradeWorkers();
+-  R={ch:MCH,t:0,done:true,n:0,coins:0,good:0,bank:{},water:0,thirstT:0,thirsty:false,maxAnger:0,course:0,inCourse:0};stack=[];stackVis();syncPads();
++  R={ch:MCH,t:0,done:true,n:0,coins:0,good:0,bank:{},water:0,thirstT:0,thirsty:false,maxAnger:0,course:0,inCourse:0};stack=(D.meta.carry||[]).slice(0,metaCap());stackVis();syncPads();
+   for(const z of ZONES){if(!z.chs.includes(MCH)){continue;}z.t=0;}
+   const st=D.meta.stock;STD.w.z.count=st.w;STD.d.z.count=st.d;STD.b.z.count=st.b;Z.mdates.count=st.dates||12;Z.mflour.count=st.flour||9;Z.oven.count=st.oven;Z.ovenOut.count=st.ovenOut;
+   for(const k in STD){STD[k].cash=D.meta.cash[k]||0;STD[k].q.length=0;coinVis(STD[k]);}
+   applyMeta();for(const z of ZONES)if(z.chs.includes(MCH)&&z.pileG)pileVis(z);
++  const JOB_OF={water:()=>({src:Z.well,dst:STD.w.z,item:'water',inf:true}),dates:()=>({src:Z.mdates,dst:STD.d.z,item:'dates'}),bread:()=>({src:Z.ovenOut,dst:STD.b.z,item:'bread'}),flour:()=>({src:Z.mflour,dst:Z.oven,item:'flour'})};
++  for(const h of HELP){const v=D.meta.hc&&D.meta.hc[h.id];if(v&&v.n>0&&JOB_OF[v.item]){h.job=JOB_OF[v.item]();h.carry=new Array(v.n).fill(1);}}metaLive=true;
+   kaaba({old:false,rubble:false,green:false,scaffold:false,wallH:8.7,stone:true,roof:true,door:true,hijr:true});setTime('asr');RAIN.target=0;flood.visible=false;resetOld();
+   metaG.visible=true;baker.g.visible=true;HELP.forEach(h=>h.per.g.visible=true);
+   hooks.step=metaStep;hooks.beat=metaBeat;hooks.cap=metaCap;placeHero(16.5,6.5);cam.yaw=Math.atan2(P.x,P.z);syncMPads();
+@@ -157,10 +165,13 @@
+   if(aw){state='ui';sheet(`<span class="ic">🫗</span><p class="eb">${CH[MCH].name}</p><h2>${L2('Hoş geldin!','Welcome back!')}</h2><p>${L2(`Sen yokken (${aw.mins} dk) yardımcıların ${aw.n} ikram yaptı.`,`While you were away (${aw.mins} min) your helpers served ${aw.n} times.`)}</p><div class="kstats"><div>🪙 +${aw.c}<small>${L2('Bereket','Bereket')}</small></div></div><div class="kbtns"><button class="kbtn" id="kw-ok" data-back>${L2('Devam','Continue')}</button></div>`,c=>{c.querySelector('#kw-ok').onclick=()=>{closeSheet();state='play';};});}
+   else toast(CH[MCH].task,5);}
+ function leaveMeta(){if(!metaBuilt)return;saveMeta();for(const p of PIL){p.on=false;p.per.g.visible=false;}for(const k in STD)STD[k].q.length=0;
+-  metaG.visible=false;baker.g.visible=false;HELP.forEach(h=>{h.per.g.visible=false;h.carry.length=0;h.job=null;});Z.mdates.camel.g.visible=false;for(const p of MPADS.splice(0))scene.remove(p.mesh);}
++  metaG.visible=false;baker.g.visible=false;HELP.forEach(h=>{h.per.g.visible=false;h.carry.length=0;h.job=null;});Z.mdates.camel.g.visible=false;for(const p of MPADS.splice(0))killPad(p.mesh);metaLive=false;metaSess++;}
+ function saveMeta(){if(!metaBuilt)return;const st=D.meta.stock;st.w=STD.w.z.count;st.d=STD.d.z.count;st.b=STD.b.z.count;st.dates=Z.mdates.count;st.flour=Z.mflour.count;st.oven=Z.oven.count;st.ovenOut=Z.ovenOut.count;
+-  for(const k in STD)D.meta.cash[k]=STD[k].cash;D.meta.lastT=Date.now();}
++  for(const k in STD)D.meta.cash[k]=STD[k].cash;D.meta.lastT=Math.max(D.meta.lastT||0,Date.now());
++  if(metaLive){D.meta.carry=stack.filter(t=>ITEM_STAND[t]||t==='flour');D.meta.hc={};for(const h of HELP)if(h.carry.length&&h.job)D.meta.hc[h.id]={item:h.job.item,n:h.carry.length};}}
+ {const cc0=cleanupChapter;cleanupChapter=function(){if(R.ch===MCH)leaveMeta();cc0();};}
++PRESAVE.push(()=>{if(metaLive&&R.ch===MCH)saveMeta();});
++function metaDst(z,type){if(R.ch!==MCH||!metaBuilt)return null;if(type==='dates'&&z===Z.mdates)return STD.d.z;if(type==='flour'&&z===Z.mflour)return Z.oven;if(type==='bread'&&z===Z.ovenOut)return STD.b.z;return null;}
+ {const sc0=startChapter;startChapter=function(n){if(n===MCH){startMeta();return;}sc0(n);};}
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&R.ch===MCH&&SITE.on){saveMeta();ssave();}});
+ addEventListener('pagehide',()=>{if(R.ch===MCH&&SITE.on){saveMeta();ssave();}});
+@@ -178,12 +189,14 @@
+   for(const k in STD){const s=STD[k];s.g.visible=standOpen(k);s.coins.visible=s.g.visible;}}
+ function metaBeat(top,cap,take,give){
+   if(inZ(Z.well)&&stack.length<cap&&(!stack.length||stack[0]==='water')){stack.push('water');sfx.pour();}
++  if(putBack(top,'dates',Z.mdates,STD.d.z)||putBack(top,'flour',Z.mflour,Z.oven)||putBack(top,'bread',Z.ovenOut,STD.b.z))return;
+   if(inZ(Z.mdates))take(Z.mdates,'dates');if(inZ(Z.mflour))take(Z.mflour,'flour');if(inZ(Z.oven))give(Z.oven,'flour');if(inZ(Z.ovenOut))take(Z.ovenOut,'bread');
+   for(const k of openStands()){const s=STD[k];if(!inZ(s.z))continue;give(s.z,s.item);
+     if(s.cash>0){const c=s.cash;s.cash=0;award(c);coinVis(s);coinsFly(Math.min(6,1+Math.floor(c/6)),s.coins.position.x,s.coins.position.y,s.coins.position.z);ftext('+'+c+' 🪙',s.z.x,2.4,s.z.z,'#ffd75e');sfx.good();hap();}}}
+ /* ---------- arrow + HUD ---------- */
+ {const st0=siteTarget;siteTarget=function(){if(R.ch!==MCH)return st0();if(state!=='play'||R.done)return null;const top=stack[stack.length-1];
+-  if(top==='flour')return ZT(Z.oven);if(top&&ITEM_STAND[top]&&standOpen(ITEM_STAND[top]))return ZT(STD[ITEM_STAND[top]].z);
++  if(top==='flour')return Z.oven.count>=Z.oven.max?BACK(Z.mflour):ZT(Z.oven);
++  if(top&&ITEM_STAND[top]&&standOpen(ITEM_STAND[top])){const z=STD[ITEM_STAND[top]].z;if(z.count>=z.max&&top!=='water')return BACK(top==='dates'?Z.mdates:Z.ovenOut);return ZT(z);}
+   let best=null,bs=-1;for(const k of openStands()){const s=STD[k];const u=(s.q.length+1)*(s.z.count<2?3:1)/(1+s.z.count)+(s.cash>=24?2:0);if(u>bs){bs=u;best=k;}}
+   if(!best)return ZT(Z.well);const s=STD[best];if(s.cash>=24&&s.z.count>=2)return ZT(s.z);
+   if(best==='w')return ZT(Z.well);if(best==='d')return ZT(Z.mdates);return Z.ovenOut.count>0?ZT(Z.ovenOut):ZT(Z.mflour);};}
+@@ -204,8 +217,7 @@
+   if(!lock){path.querySelectorAll('.knode.cur').forEach(n=>n.classList.remove('cur'));b.classList.add('cur');setTimeout(()=>b.scrollIntoView({block:'center'}),40);}};}
+ /* the title's PLAY goes to the map when the story is done (the map offers both) */
+ Object.assign(window.__site,{startMeta,leaveMeta,STD,MUPG,PIL:()=>PIL.filter(p=>p.on).map(p=>({st:p.st,stand:p.stand.k,x:p.x,z:p.z})),HELP:()=>HELP.map(h=>({id:h.id,x:h.x,z:h.z,carry:h.carry.length})),
+-  meta:()=>D.meta,seasonTarget,awayEarnings,MPADS:()=>MPADS.map(p=>p.u.id),metaCap,saveMeta,startChapter,showMap,showStory,
++  meta:()=>D.meta,metaLive:()=>metaLive,metaSess:()=>metaSess,seasonDone:()=>seasonDone(),seasonTarget,awayEarnings,MPADS:()=>MPADS.map(p=>p.u.id),metaCap,saveMeta,startChapter,showMap,showStory,
+   spawn:()=>spawnPilgrim(),setStock:(k,n)=>{STD[k].z.count=n;pileVis(STD[k].z);}});
+ /* ---------- one late check after everything loaded: a context-loss reload resumes play ---------- */
+ try{if(sessionStorage.getItem('kabe-resume')){sessionStorage.removeItem('kabe-resume');if(D.run&&MODE!=='p2'&&!KT.hidden)setTimeout(()=>showStory(D.run.ch),200);}}catch(_){}
+-})();
+--- /dev/null	2026-11-06 23:42:18.619151807 -0500
++++ l14.js	2026-11-07 21:23:58.379376908 -0500
+@@ -0,0 +1,78 @@
++/* ===================== l14: the full-version unlock, first-time service tutorial, season mastery goals =====================
++   Sales model: chapters 1-2 are free; chapters 3-7 and "Hacılara Hizmet" open with ONE non-consumable purchase.
++   No ads, no subscriptions, no consumables, bereket is never sold for real money.
++   Only the app package (STORE_BUILD) is gated; the web build stays complete. */
++const FREE_CH=2,PROD_ID='kabe_full_unlock';
++const IAP={ready:false,price:'',busy:false,err:''};
++function isFull(){return !STORE_BUILD||!!D.full;}
++function grantFull(src){if(D.full)return;D.full=true;ssave();toast(L2('Tam sürüm açıldı. Teşekkürler!','Full version unlocked. Thank you!'),4);sfx.build();hap('heavy');
++  if(!KS.hidden&&document.getElementById('kpw-buy')){closeSheet();if(KM.hidden&&KT.hidden&&state!=='play')showMap();else if(!KM.hidden)showMap();}}
++{const cp0=cleanProfile;cleanProfile=function(s){const o=cp0(s);o.full=!!(s&&s.full===true);return o;};D.full=D.full===true;}
++/* store glue: cordova-plugin-purchase v13 (global CdvPurchase). Nothing here runs on the web. */
++function iapInit(){const C=window.CdvPurchase;if(!STORE_BUILD||!C||IAP.ready)return;
++  try{const {store,ProductType,Platform}=C;
++    store.register([{id:PROD_ID,type:ProductType.NON_CONSUMABLE,platform:Platform.GOOGLE_PLAY},{id:PROD_ID,type:ProductType.NON_CONSUMABLE,platform:Platform.APPLE_APPSTORE}]);
++    store.when().productUpdated(p=>{if(p.id!==PROD_ID)return;const o=p.getOffer&&p.getOffer();IAP.price=(o&&o.pricingPhases&&o.pricingPhases[0]&&o.pricingPhases[0].price)||'';if(p.owned)grantFull('owned');refreshPaywall();})
++      .approved(t=>t.verify()).verified(r=>r.finish())
++      .finished(t=>{if((t.products||[]).some(p=>p.id===PROD_ID)){IAP.busy=false;grantFull('purchase');}});
++    store.error(e=>{IAP.busy=false;IAP.err=(e&&e.message)||'';refreshPaywall();});
++    store.initialize([Platform.GOOGLE_PLAY,Platform.APPLE_APPSTORE]).then(()=>{IAP.ready=true;const p=store.get(PROD_ID);if(p&&p.owned)grantFull('owned');refreshPaywall();});
++  }catch(e){IAP.err=String(e&&e.message||e);}}
++document.addEventListener('deviceready',iapInit,false);setTimeout(iapInit,1500);
++function iapBuy(){const C=window.CdvPurchase;if(!C||!IAP.ready){IAP.err=L2('Mağazaya bağlanılamadı. İnternetini kontrol edip tekrar dene.','Could not reach the store. Check your connection and try again.');refreshPaywall();return;}
++  const p=C.store.get(PROD_ID),o=p&&p.getOffer();if(!o){IAP.err=L2('Ürün şu an alınamıyor.','The product is not available right now.');refreshPaywall();return;}
++  IAP.busy=true;IAP.err='';refreshPaywall();o.order().then(r=>{if(r&&r.isError){IAP.busy=false;IAP.err=r.message||'';refreshPaywall();}});}
++function iapRestore(){const C=window.CdvPurchase;if(!C||!IAP.ready){IAP.err=L2('Mağazaya bağlanılamadı.','Could not reach the store.');refreshPaywall();return;}
++  IAP.busy=true;refreshPaywall();C.store.restorePurchases().then(()=>{IAP.busy=false;const p=C.store.get(PROD_ID);if(p&&p.owned)grantFull('restore');else{IAP.err=L2('Bu hesapta önceki bir satın alma bulunamadı.','No earlier purchase was found on this account.');refreshPaywall();}});}
++function paywall(from){state=state==='play'?'ui':state;
++  sheet(`<span class="ic">🕋</span><p class="eb">${L2('Tam sürüm','Full version')}</p><h2>${L2('Hikâyenin devamı','The rest of the story')}</h2>
++    <p>${L2('İlk iki bölüm ücretsiz. Tek seferlik satın almayla şunlar açılır:','The first two chapters are free. One purchase opens:')}</p>
++    <div class="task"><span>🧱</span><span>${L2('5 bölüm daha: taşçılar, Kanlı Yemin, gemi, yükselen duvarlar, çatı ve kapı','5 more chapters: the stonecutters, the oath, the ship, the rising walls, the roof and the door')}</span></div>
++    <div class="task"><span>🫖</span><span>${L2('Hacılara Hizmet: hikâyeden sonra sınırsız hac mevsimleri','Serving the Pilgrims: endless seasons after the story')}</span></div>
++    <p style="text-align:center;font:700 14px var(--f-ui);margin:10px 0 0">${L2('Tek seferlik · reklam yok · abonelik yok','One-time · no ads · no subscription')}</p>
++    <p id="kpw-msg" role="status" style="text-align:center;font:600 13px var(--f-ui);color:#8a3a2c;min-height:18px;margin:6px 0 0"></p>
++    <div class="kbtns"><button class="kbtn alt" id="kpw-x" data-back>${L2('Geri','Back')}</button><button class="kbtn" id="kpw-buy"></button></div>
++    <p style="text-align:center;margin:10px 0 0"><button id="kpw-restore" style="background:none;border:0;font:700 14px var(--f-ui);color:#1f6f78;min-height:44px;text-decoration:underline">${L2('Satın alımları geri yükle','Restore purchases')}</button></p>`,c=>{
++    c.querySelector('#kpw-x').onclick=()=>{closeSheet();if(KM.hidden&&KT.hidden)showMap();};
++    c.querySelector('#kpw-buy').onclick=iapBuy;c.querySelector('#kpw-restore').onclick=iapRestore;refreshPaywall();});}
++function refreshPaywall(){const b=document.getElementById('kpw-buy');if(!b)return;const m=document.getElementById('kpw-msg');
++  b.disabled=IAP.busy;b.textContent=IAP.busy?L2('Bekleniyor…','Please wait…'):(L2('Satın al','Buy')+(IAP.price?' · '+IAP.price:''));
++  if(m)m.textContent=IAP.err||(!window.CdvPurchase?L2('Satın alma yalnızca uygulama mağazası sürümünde çalışır.','Purchases work only in the store version of the app.'):'');}
++/* gates: the story card, a direct start, a resume, the service layer */
++{const ss0=showStory;showStory=function(n){if(n>FREE_CH&&!isFull()){paywall('story');return;}ss0(n);};}
++{const sc0=startChapter;startChapter=function(n){if((n>FREE_CH||n===MCH)&&!isFull()){paywall('start');return;}sc0(n);};}
++{const sm0=startMeta;startMeta=function(){if(!isFull()){paywall('meta');return;}sm0();};}
++{const sm1=showMap;showMap=function(){sm1();if(isFull())return;const nodes=document.querySelectorAll('#km-path .knode');nodes.forEach((b,i)=>{const n=b.id==='km-meta'?MCH:i+1;if(n<=FREE_CH)return;b.classList.add('paid');
++    if(!b.querySelector('.kpaid')){const t=document.createElement('span');t.className='kpaid';t.textContent=L2('🔒 Tam sürüm','🔒 Full version');b.appendChild(t);}});};}
++{const st=document.createElement('style');st.textContent=`.knode .kpaid{display:block;font:800 11px var(--f-ui,system-ui);color:#7a4a10;background:#f6e3b4;border-radius:999px;padding:2px 8px;margin-top:4px}`;document.head.appendChild(st);}
++/* chapter 1 story card: the full intro is one tap away */
++{const ss1=showStory;showStory=function(n){ss1(n);if(n!==1)return;const k=$('#kcard .kbtns');if(!k||$('#ks-full'))return;
++  const b=document.createElement('p');b.style.cssText='text-align:center;margin:8px 0 0';b.innerHTML=`<button id="ks-full" style="background:none;border:0;font:700 14px var(--f-ui);color:#1f6f78;min-height:44px;text-decoration:underline">▶ ${L2('Girişi uzun izle (20 sn)','Watch the full intro (20 s)')}</button>`;
++  k.parentNode.insertBefore(b,k.nextSibling);b.querySelector('button').onclick=()=>{FULL_INTRO=true;closeSheet();startChapter(1);};};}
++/* ---------- first visit to the service layer: four steps ---------- */
++let mtut=0,mtutCash=0;
++function metaTutStart(){if(D.meta.tut)return;mtut=1;TIP.hidden=false;TIP.textContent=L2('1/4 · Zemzem\'den su al: mavi daireye git','1/4 · Get water at Zamzam: walk to the blue circle');spawnPilgrim();}
++function metaTutStep(){if(!mtut)return;TIP.hidden=state!=='play';if(state!=='play')return;
++  if(mtut===1&&stack.includes('water')){mtut=2;TIP.textContent=L2('2/4 · Suyu Su ikramı standına bırak','2/4 · Take the water to the water stand');}
++  else if(mtut===2&&STD.w.z.count>0){mtut=3;TIP.textContent=L2('3/4 · Sıradaki hacıya ikram ediliyor, bekle','3/4 · The first pilgrim in line is being served, wait');if(!STD.w.q.length)spawnPilgrim();}
++  else if(mtut===3&&STD.w.cash>0){mtut=4;mtutCash=STD.w.cash;TIP.textContent=L2('4/4 · Tezgâhtaki bereketi topla: standa geri dön','4/4 · Collect the bereket on the counter: go back to the stand');}
++  else if(mtut===4&&STD.w.cash===0){mtut=0;TIP.textContent=L2('Harika! Stantları dolu tut, hacıları bekletme 🫖','Great! Keep the stands stocked and the pilgrims moving 🫖');D.meta.tut=1;ssave();setTimeout(()=>{if(!mtut)TIP.hidden=true;},3500);}}
++{const cm0=cleanMeta;cleanMeta=function(m){const o=cm0(m);o.tut=m&&m.tut?1:0;const n=(v,lo,hi)=>{v=Number(v);return isFinite(v)?Math.min(hi,Math.max(lo,v)):0;};o.sd=Math.round(n(m&&m.sd,0,1e6));o.stime=n(m&&m.stime,0,1e7);return o;};D.meta=cleanMeta(D.meta);}
++{const s0=startMeta;startMeta=function(){s0();if(R.ch===MCH&&isFull()){if(KS.hidden)metaTutStart();else{const iv=setInterval(()=>{if(R.ch!==MCH){clearInterval(iv);return;}if(KS.hidden&&state==='play'){clearInterval(iv);metaTutStart();}},300);}}};}
++{const lm0=leaveMeta;leaveMeta=function(){lm0();if(mtut){mtut=0;TIP.hidden=true;}};}
++/* ---------- season mastery goals: not just a bigger number ---------- */
++function mastery(){const s=D.meta.season,k=(s-1)%3,tg=seasonTarget(s);
++  if(k===1&&standOpen('d'))return {id:'dates',txt:L2(`Ustalık: en az ${Math.round(tg*.4)} hurma ikramı`,`Mastery: serve at least ${Math.round(tg*.4)} dates`),ok:()=>D.meta.sd>=Math.round(tg*.4)};
++  if(k===2)return {id:'time',txt:L2(`Ustalık: mevsimi ${Math.ceil(tg*12/60)} dakikada bitir`,`Mastery: finish within ${Math.ceil(tg*12/60)} min`),ok:()=>D.meta.stime<=tg*12};
++  return {id:'nomiss',txt:L2('Ustalık: kimse beklerken küsüp gitmesin','Mastery: nobody leaves upset'),ok:()=>D.meta.ms===0};}
++{const sv0=serve;serve=function(s){if(s.k==='d')D.meta.sd=(D.meta.sd||0)+1;sv0(s);};}
++{const ns0=nextSeason;nextSeason=function(){const was=D.meta.between;ns0();if(was){D.meta.sd=0;D.meta.stime=0;ssave();}};}
++{const ms0=metaStep;metaStep=function(dt,playing){ms0(dt,playing);if(dt>0&&!D.meta.between)D.meta.stime=(D.meta.stime||0)+dt;metaTutStep();};}
++{const sd0=seasonDone;seasonDone=function(){if(D.meta.between)return;const m=mastery(),won=m.ok();if(won){const b=20*D.meta.season;award(b);}D.meta.lastMastery={txt:m.txt,won};sd0();
++  setTimeout(()=>{const card=$('#kcard');if(!card||!card.querySelector('#km-next'))return;const learn=card.querySelector('.learn');
++    const p=document.createElement('div');p.className='task';p.innerHTML=`<span>${won?'⭐':'☆'}</span><span>${m.txt}: <b>${won?L2('başardın! Hediye iki katı','done! Gift doubled'):L2('bu sefer olmadı','not this time')}</b></span>`;learn.parentNode.insertBefore(p,learn);
++    const nu=MUPG.find(u=>!MU(u.id)&&(!u.need||MU(u.need)));if(nu){const q=document.createElement('div');q.className='task';q.innerHTML=`<span>${nu.icon}</span><span>${L2('Sıradaki yükseltme: ','Next upgrade: ')}<b>${nu.label}</b> · ${nu.desc} (🪙 ${nu.cost})</span>`;learn.parentNode.insertBefore(q,learn);}},760);};}
++{const uh0=updateHud;updateHud=function(dt){uh0(dt);if(SITE.on&&R.ch===MCH&&!mtut&&!D.meta.between){const cur=qSub.textContent;if(!/hacı bekliyor|pilgrims waiting/.test(cur))setT(qSub,mastery().txt);}};}
++/* the season sheet's buttons call the wrapped versions */
++Object.assign(window.__site,{isFull,grantFull,paywall,IAP,mastery,mtut:()=>mtut,startChapter,showStory,startMeta,showMap,FREE_CH,STORE_BUILD});
++})();

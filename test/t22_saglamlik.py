@@ -264,7 +264,7 @@ async def main():
         ss = await pg.evaluate("({season:T.S.meta().season,ss:T.S.meta().ss,state:T.S.state(),next:T.S.seasonTarget(T.S.meta().season)})")
         rec('Hac mevsimi biter, sonraki başlar', 'km-next' in sids and ss['season'] == 2 and ss['ss'] == 0 and ss['state'] == 'play', f'ekran={sids} sonra={ss}')
         # away earnings
-        await pg.evaluate("T.S.saveMeta();T.S.meta().lastT=Date.now()-3600e3;T.S.ssave()")
+        await pg.evaluate("T.S.ssave();(()=>{const k='kabe-ustalari-v1';const o=JSON.parse(localStorage.getItem(k));o.meta.lastT=Date.now()-3600e3;localStorage.setItem(k,JSON.stringify(o));})()")
         pg2, e2 = await newpage(ctx); await prep(pg2); await pg.close(); pg = pg2
         c0 = await pg.evaluate("T.S.D().coins")
         await pg.evaluate("T.S.startMeta()"); await pg.wait_for_timeout(300)

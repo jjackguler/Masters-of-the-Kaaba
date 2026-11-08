@@ -32,7 +32,7 @@ def sha(p):
 
 # ---------- 1. every input must be present before anything runs ----------
 MODULES_I18N = ['l1.js', 'l2.js', 'l3.js', 'l5.js', 'l4.js', 'l6.js', 'l7.js']   # wrapped by i18n.py -> l*.t.js (generated)
-MODULES_RAW = ['world.js', 'l0.js', 'l8.js', 'l9.js', 'l10.js', 'l11.js', 'l12.js', 'l13.js']   # l9 opens the site scope, l13 closes it
+MODULES_RAW = ['world.js', 'l0.js', 'l8.js', 'l9.js', 'l10.js', 'l11.js', 'l12.js', 'l13.js', 'l14.js']   # l9 opens the site scope, l14 closes it
 INPUTS = {
     'head.html': 'page head: CSS and static DOM',
     'i18n.py': 'wraps Turkish strings in l1-l7 with __t() (writes l*.t.js and strings.json, which are generated)',
@@ -81,6 +81,7 @@ RT = r'''const QL=(()=>{let t='auto';try{t=localStorage.getItem('bekke-quality')
   const tier=t!=='auto'?t:(!touch?'high':(cores>=8&&mem>=6?'med':'low'));
   const P={high:{pr:2,sh:2048,post:1,std:true,props:1,grass:1,clouds:true},med:{pr:1.5,sh:1024,post:.8,std:true,props:.7,grass:.5,clouds:true},low:{pr:1,sh:1024,post:.65,std:false,props:.4,grass:0,clouds:false}}[tier];
   return Object.assign({sel:t,tier},P);})();
+const STORE_BUILD=__STORE_BUILD__;   // true only in the app package: chapters 3-7 and the service layer need the one-time unlock
 const MODE=(()=>{try{return localStorage.getItem('bekke-mode')||'p1';}catch(_){return 'p1';}})();
 const LANG=(()=>{try{const v=localStorage.getItem('bekke-lang');if(v)return v;}catch(_){}return /^tr/i.test(navigator.language||'')?'tr':'en';})();
 const EN=%s;
@@ -104,12 +105,12 @@ window.__engineMissing=function(){if(window.THREE||document.getElementById('engi
 '''
 
 head = rd('head.html')
-body = rd('textures.js') + ''.join(rd(f) for f in ['world.js', 'l0.js'] + [m.replace('.js', '.t.js') for m in ['l1.js', 'l2.js', 'l3.js', 'l5.js', 'l4.js', 'l6.js', 'l7.js']] + ['l8.js', 'l9.js', 'l10.js', 'l11.js', 'l12.js', 'l13.js'])
+body = rd('textures.js') + ''.join(rd(f) for f in ['world.js', 'l0.js'] + [m.replace('.js', '.t.js') for m in ['l1.js', 'l2.js', 'l3.js', 'l5.js', 'l4.js', 'l6.js', 'l7.js']] + ['l8.js', 'l9.js', 'l10.js', 'l11.js', 'l12.js', 'l13.js', 'l14.js'])
 MAIN = '<script>\n(function(){\nif(typeof THREE==="undefined"){window.__engineMissing();return;}\n' + RT + body + '\n})();\n</script>\n'
 
 # ---------- 4a. web build ----------
 CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-web = head + '\n' + ENGINE_GUARD + '<script src="%s" onerror="window.__engineMissing()"></script>\n' % CDN + MAIN
+web = head + '\n' + ENGINE_GUARD + '<script src="%s" onerror="window.__engineMissing()"></script>\n' % CDN + MAIN.replace('__STORE_BUILD__', 'false', 1)
 wr('bekke-kabe.html', web)
 wr('dist/web/kabe-ustalari.html', web)
 
@@ -120,7 +121,7 @@ app_head, n = re.subn(r'<link rel="stylesheet" href="https://fonts\.googleapis\.
 assert n == 1, 'Google Fonts link not found in head.html'
 i = app_head.index('</style>') + len('</style>')
 app = ('<!doctype html>\n<html lang="tr">\n<head>\n<meta charset="utf-8">\n<meta name="theme-color" content="#2a211b">\n' + app_head[:i] + '\n</head>\n<body>\n'
-       + app_head[i:] + '\n' + ENGINE_GUARD + '<script src="lib/three.min.js" onerror="window.__engineMissing()"></script>\n' + MAIN + '</body>\n</html>\n')
+       + app_head[i:] + '\n' + ENGINE_GUARD + '<script src="lib/three.min.js" onerror="window.__engineMissing()"></script>\n' + MAIN.replace('__STORE_BUILD__', 'true', 1) + '</body>\n</html>\n')
 ext = [u for u in re.findall(r'(?:src|href)="(https?://[^"]+)"', app)]
 assert not ext, 'offline build still references the network: %s' % ext
 W = 'dist/app/www'

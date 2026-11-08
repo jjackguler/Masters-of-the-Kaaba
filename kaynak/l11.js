@@ -167,7 +167,7 @@ function makeBars(){abars.forEach(a=>a.remove());abars=F4.map(f=>{const a=el(`<d
 function ch4Step(dt,playing){if(!F4.length)return;const T4=CH[4].par;
   F4.forEach((f,i)=>{if(playing){const r=1.55+i*.18+.7*Math.sin(R.t*.35+i*1.7);f.anger=Math.min(100,f.anger+Math.max(.5,r)*dt);R.maxAnger=Math.max(R.maxAnger,f.anger);}
     f.men.forEach(m=>animPerson(m,dt,0,f.anger>65?'angry':f.anger<35?'idle':'talk'));
-    const a=abars[i];if(a){const s=scr(f.x,3.1,f.z);a.style.display=s.ok&&state==='play'?'':'none';a.style.left=s.x+'px';a.style.top=s.y+'px';a.querySelector('i').style.width=f.anger+'%';a.classList.toggle('hot',f.anger>75);}
+    const a=abars[i];if(a){const s=scr(f.x,3.1,f.z);const dsp=s.ok&&state==='play'?'':'none';if(a.__d!==dsp){a.__d=dsp;a.style.display=dsp;}if(dsp===''){const x=Math.round(s.x),y=Math.round(s.y);if(a.__x!==x||a.__y!==y){a.__x=x;a.__y=y;a.style.left=x+'px';a.style.top=y+'px';}const w=Math.round(f.anger);if(a.__w!==w){a.__w=w;(a.__i||(a.__i=a.querySelector('i'))).style.width=w+'%';}const hot=f.anger>75;if(a.__h!==hot){a.__h=hot;a.classList.toggle('hot',hot);}}}
     });
   if(!playing)return;const left=Math.max(0,T4-R.t);
   if(left<=0){TIMER.hidden=true;chapterDone();return;}   // rule: when dawn and a full bar happen in the same frame, dawn wins

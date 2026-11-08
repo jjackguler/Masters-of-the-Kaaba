@@ -40,8 +40,8 @@ cv.addEventListener('lostpointercapture',e=>endPtr(e));
 {const sh0=sheet;sheet=function(h,f){resetInput();sh0(h,f);extendSheet();};}
 {const an0=anime;anime=function(shots,done){resetInput();if(RM())shots=shots.map(s=>Object.assign({},s,{shake:0,speed:0,flash:null}));an0(shots,done);};}
 /* ---------- T16: audio follows the app lifecycle ---------- */
-function audioSuspend(){try{if(AU.ctx&&AU.ctx.state==='running')AU.ctx.suspend();}catch(_){}}
-function audioResume(){try{if(AU.ctx&&AU.ctx.state!=='running'&&AU.ctx.state!=='closed')AU.ctx.resume();}catch(_){}}
+function audioSuspend(){try{if(AU.ctx&&AU.ctx.state==='running')AU.ctx.suspend().catch(()=>{});}catch(_){}}
+function audioResume(){try{if(AU.ctx&&AU.ctx.state!=='running'&&AU.ctx.state!=='closed')AU.ctx.resume().catch(()=>{});}catch(_){}}
 ['pointerdown','keydown','touchend'].forEach(ev=>addEventListener(ev,()=>{if(!document.hidden)audioResume();},{capture:true,passive:true}));
 /* ---------- T06: resumable chapter runs ---------- */
 const ITEMS_OK=new Set(['mud','rubble','raw','block','rawwood','beam','water','dates','flour','bread']);
@@ -49,9 +49,10 @@ function snapRun(){return {ch:R.ch,t:R.t,n:R.n,coins:R.coins,good:R.good,bank:Ob
   course:R.course,inCourse:R.inCourse,bankTip:R.bankTip||0,stack:stack.slice(),zones:ZONES.map(z=>z.count|0),fam:families.map(f=>[f.z.count|0,f.happy?1:0]),
   fires:F4.map(f=>Math.round(f.anger*10)/10),px:+P.x.toFixed(2),pz:+P.z.toFixed(2),at:Date.now()};}
 function canSnap(){return SITE.on&&R.ch>=1&&R.ch<=NCH&&!R.done&&!R.ended&&state==='play';}
-let snapT=0;
-function saveRun(){if(!canSnap())return false;D.run=snapRun();return ssave();}
-function resumeRun(s){const n=s&&s.ch;if(!(n>=1&&n<=NCH)||n>D.unl){D.run=null;ssave();return false;}
+let snapT=0,runLive=false;
+PRESAVE.push(()=>{if(runLive&&SITE.on&&R.ch>=1&&R.ch<=NCH&&!R.ended)D.run=snapRun();});
+function saveRun(){if(!canSnap())return false;runLive=true;return ssave();}
+function resumeRun(s){const n=s&&s.ch;if(!Number.isInteger(n)||!CH[n]||n<1||n>NCH||n>D.unl){D.run=null;ssave();return false;}
   auInit();coinIcon();musicStart();cleanupChapter();KM.hidden=true;KT.hidden=true;titleEl.hidden=true;closeSheet();SITE.on=true;started=true;build();makeUpgradeWorkers();
   setupCh(n);afterIntro(n);const num=(v,d,lo,hi)=>{v=Number(v);return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};const c=CH[n];
   R.t=num(s.t,0,0,36000);R.n=Math.round(num(s.n,0,0,c.goal||999));R.coins=Math.round(num(s.coins,0,0,1e6));R.good=Math.round(num(s.good,0,0,1e5));
@@ -88,7 +89,7 @@ const PADUI={open:false,p:null};
 const padEl=el(`<div id="kpad" hidden role="dialog" aria-live="polite"><span class="i"></span><b></b><button type="button"></button><small></small></div>`);document.body.appendChild(padEl);
 function padRemain(p){return Math.max(0,p.u.cost-(p.paid||0));}
 function buyPad(p){const rem=padRemain(p);if(D.coins<rem)return false;D.coins-=rem;p.paid=p.u.cost;
-  if(p.buy)p.buy();else{const u=p.u;D.up[u.id]=true;delete D.up['p_'+u.id];if(u.apply)u.apply();makeUpgradeWorkers();scene.remove(p.mesh);const i=PADS.indexOf(p);if(i>=0)PADS.splice(i,1);syncPads();}
+  if(p.buy)p.buy();else{const u=p.u;D.up[u.id]=true;delete D.up['p_'+u.id];if(u.apply)u.apply();makeUpgradeWorkers();killPad(p.mesh);const i=PADS.indexOf(p);if(i>=0)PADS.splice(i,1);syncPads();}
   sfx.build();hap('heavy');sparkle(p.u.x,1,p.u.z,30);ftext('✓ '+p.u.label,p.u.x,2,p.u.z,'#ffd75e');pop('r-wood');ssave();return true;}
 function nearestPad(){let b=null,bd=1.9;for(const f of PADSETS)for(const p of f()){const d=Math.hypot(P.x-p.u.x,P.z-p.u.z);if(d<bd){bd=d;b=p;}}return b;}
 function stepPadUI(){const p=SITE.on&&state==='play'&&KS.hidden&&!R.done?nearestPad():null;
@@ -101,21 +102,28 @@ function stepPadUI(){const p=SITE.on&&state==='play'&&KS.hidden&&!R.done?nearest
   if(padEl.hidden){padEl.hidden=false;tone(HIC[6],.06,.03);}}
 padEl.querySelector('button').addEventListener('click',e=>{e.stopPropagation();const p=PADUI.p;if(p&&buyPad(p)){padEl.hidden=true;PADUI.p=null;}});
 /* ---------- T08: the arrow follows what you are holding ---------- */
+const BACK=z=>{const t=ZT(z);return t&&Object.assign({},t,{n:L2('Geri bırak: ','Put back: ')+t.n});};
 siteTarget=function(){if(state!=='play'||R.done)return null;const top=stack[stack.length-1],n=R.ch;
   if(n===1)return top==='mud'?ZT(Z.dump):ZT(nearestMud());
   if(n===2)return top==='rubble'?ZT(Z.dump):ZT(Z.rubble);
   if(n===4){if(top!=='water')return ZT(Z.well);let b=null;for(const f of F4)if(!b||f.anger>b.anger)b=f;return b?{x:b.x,z:b.z,n:b.name}:null;}
   if(top==='water'){if(!R.thirsty)return ZT(Z.well);let c=cutter[0];if(carp&&carp.g.visible&&Math.hypot(P.x-carp.x,P.z-carp.z)<Math.hypot(P.x-c.x,P.z-c.z))c=carp;return {x:c.x,z:c.z,n:L2('Ustalar','Craftsmen')};}
-  if(top==='raw')return ZT(Z.cutIn);if(top==='rawwood')return ZT(Z.carIn);if(top==='block'||top==='beam')return ZT(Z.wall);
+  if(top==='raw')return Z.cutIn.count>=Z.cutIn.max?BACK(Z.raw):ZT(Z.cutIn);if(top==='rawwood')return Z.carIn.count>=Z.carIn.max?BACK(Z.rawWood):ZT(Z.carIn);if(top==='block'||top==='beam')return ZT(Z.wall);
   if(R.thirsty)return ZT(Z.well);
   const c=COURSES[R.course];if(!c)return null;const need=c.t==='stone'?'block':'beam';if((R.bank[need]||0)>0)return ZT(Z.wall);
   if(c.t==='stone')return Z.cutOut.count>=2||(Z.cutOut.count>0&&Z.raw.count===0)?ZT(Z.cutOut):Z.cutIn.count>=Z.cutIn.max-2&&Z.cutOut.count>0?ZT(Z.cutOut):ZT(Z.raw);
   return Z.carOut.count>=2||(Z.carOut.count>0&&Z.rawWood.count===0)?ZT(Z.carOut):ZT(Z.rawWood);};
+/* a load can always go back onto its own pile when the place it goes to is full (no dead ends) */
+/* taking more of a load whose only destination is full would only lead to a dead end */
+function takeBlocked(z,type){const dst=type==='raw'&&z===Z.raw?Z.cutIn:type==='rawwood'&&z===Z.rawWood?Z.carIn:(typeof metaDst==='function'?metaDst(z,type):null);return !!dst&&dst.count>=dst.max;}
+function putBack(top,type,src,dst){if(top!==type||!src||!inZ(src)||(dst&&dst.count<dst.max))return false;stack.pop();src.count++;pileVis(src);sfx.thunk();if(stack[stack.length-1]!==type)ftext(L2('Geri bırakıldı','Put back'),P.x,P.y+2.3,P.z);return true;}
+{const ai0=afterIntro;afterIntro=function(n){ai0(n);runLive=true;};}
 {const cb0=courseBeat;courseBeat=function(top,cap,take,give){
   if(top==='water'&&!R.thirsty&&inZ(Z.well)){while(stack[stack.length-1]==='water')stack.pop();sfx.pour();top=stack[stack.length-1];}
+  if(putBack(top,'raw',Z.raw,Z.cutIn)||putBack(top,'rawwood',Z.rawWood,Z.carIn))top=stack[stack.length-1];
   cb0(top,cap,take,give);};}
 /* ---------- T03-T05 extras ---------- */
-{const cc0=cleanupChapter;cleanupChapter=function(){cc0();padEl.hidden=true;PADUI.p=null;flights.forEach(f=>{if(f.ghost)scene.remove(f.m);});flights.length=0;};}
+{const cc0=cleanupChapter;cleanupChapter=function(){runLive=false;cc0();padEl.hidden=true;PADUI.p=null;flights.forEach(f=>{if(f.ghost)scene.remove(f.m);});flights.length=0;};}
 /* ---------- result: say what opened ---------- */
 {const sr0=showResult;showResult=function(n,s,first){sr0(n,s,first);const card=$('#kcard'),k=card&&card.querySelector('.kbtns');if(!k)return;
   const nx=n<NCH?CH[n+1]:null;const t=nx?L2('Sırada: ','Next: ')+nx.icon+' '+L2('Bölüm ','Chapter ')+(n+1)+' · '+nx.name:L2('Açıldı: 🫖 Hacılara Hizmet: hikâyeden sonra sınırsız mevsimler','Unlocked: 🫖 Serving the Pilgrims: endless seasons after the story');
@@ -201,6 +209,7 @@ function stepFlights(dt){for(let i=flights.length-1;i>=0;i--){const f=flights[i]
 if(KP.scaffold&&KP.scaffold.material){const m=KP.scaffold.material;m.transparent=true;m.opacity=.55;m.depthWrite=false;m.needsUpdate=true;}
 /* ---------- per-frame glue ---------- */
 {const es0=extraStep;extraStep=function(dt){es0(dt);if(!SITE.on)return;stepFlights(Math.min(dt,.05));stepPadUI();
+  if(canSnap())runLive=true;stepChip(dt);
   if(canSnap()&&gameActive()){snapT+=dt;if(snapT>2){snapT=0;saveRun();}}else if(!canSnap()&&runDirty&&state!=='play'){ssave();}};}
 /* ---------- cutscene objects: everything that existed before any cutscene is shared ---------- */
 isSharedMat(null);
@@ -208,9 +217,26 @@ scene.traverse(o=>{if(o.geometry)SHARED_GEO.add(o.geometry);const ms=Array.isArr
 for(const g of [typeof stoneGeo!=='undefined'?stoneGeo:null,typeof plankGeo!=='undefined'?plankGeo:null,typeof sackGeo!=='undefined'?sackGeo:null])if(g)SHARED_GEO.add(g);
 for(const k in mat){const m=mat[k];if(m&&m.map)SHARED_MATS.add(m.map);}
 [blockMat,jugMat].forEach(m=>{if(m){SHARED_MATS.add(m);if(m.map)SHARED_MATS.add(m.map);}});
+/* ---------- T2: what is happening right here, in words + icon ---------- */
+const ACCEPTS=new Map();function accepts(z){if(!ACCEPTS.size&&Z.cutIn){ACCEPTS.set(Z.cutIn,['raw']);ACCEPTS.set(Z.carIn,['rawwood']);ACCEPTS.set(Z.wall,['block','beam']);ACCEPTS.set(Z.dump,['mud','rubble']);}return ACCEPTS.get(z);}
+{const st=document.createElement('style');st.textContent=`#kchip{position:fixed;right:16px;bottom:calc(112px + env(safe-area-inset-bottom));z-index:25;max-width:min(240px,calc(100vw - 32px));background:rgba(42,33,27,.88);color:#fff6e0;border-radius:999px;padding:8px 14px;font:700 14px/1.2 var(--f-ui,system-ui);box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none}#kchip[hidden]{display:none}#kchip.warn{background:rgba(150,40,30,.92)}`;document.head.appendChild(st);}
+const chipEl=el('<div id="kchip" hidden role="status" aria-live="polite"></div>');document.body.appendChild(chipEl);
+let chipLen=0,chipGrow=0,chipShrink=0;
+function stepChip(dt){const now=performance.now()/1000;if(stack.length>chipLen)chipGrow=now+.6;else if(stack.length<chipLen)chipShrink=now+.6;chipLen=stack.length;
+  let txt='',warn=false;
+  if(SITE.on&&state==='play'&&!R.done&&padEl.hidden){let z=null;for(const q of ZONES){if(q.mesh.visible&&inZ(q)){z=q;break;}}
+    if(z){const top=stack[stack.length-1],acc=accepts(z),cap=hooks.cap?hooks.cap():D.cap;
+      if(chipGrow>now)txt='⬆ '+L2('Yükleniyor','Loading');
+      else if(chipShrink>now)txt='⬇ '+L2('Teslim ediliyor','Delivering');
+      else if(acc&&top&&!acc.includes(top)){txt='✖ '+L2('Yanlış malzeme','Wrong material');warn=true;}
+      else if(acc&&top&&z.count>=z.max){txt='⛔ '+L2('Dolu: önce boşalsın','Full: wait or put back');warn=true;}
+      else if(!acc&&!top&&z.count===0&&z.item)txt='⏳ '+L2('Hazırlanıyor, bekle','Being prepared, wait');
+      else if(!acc&&top&&stack.length>=cap)txt='🎒 '+L2('Elin dolu','Hands full');}}
+  if(!txt){if(!chipEl.hidden)chipEl.hidden=true;return;}
+  setT(chipEl,txt);chipEl.classList.toggle('warn',warn);if(chipEl.hidden)chipEl.hidden=false;}
 /* ---------- debug surface for tests ---------- */
 Object.assign(window.__site,{startChapter,showStory,saveRun,resumeRun,snapRun,goBack,resetInput,siteTarget:()=>siteTarget(),gameActive,PADUI,buyPad,nearestPad,award,ssave,sload,cleanProfile,
-  flights:()=>flights.length,FIRES:()=>FIRES.length,mem:()=>Object.assign({},renderer.info.memory),setStack:a=>{stack=a.slice();stackVis();},unload:()=>unload,
+  flights:()=>flights.length,arrowScale:()=>+arrowG.scale.x.toFixed(4),chip:()=>chipEl.hidden?'':chipEl.textContent,runLive:()=>runLive,FIRES:()=>FIRES.length,mem:()=>Object.assign({},renderer.info.memory),setStack:a=>{stack=a.slice();stackVis();},unload:()=>unload,
   zonesOf:()=>Object.fromEntries(Object.entries(Z).filter(([k,v])=>v&&v.mesh).map(([k,v])=>[k,{x:v.x,z:v.z,count:v.count,vis:v.mesh.visible}])),
   setP:(x,z)=>{P.x=x;P.z=z;P.y=height(x,z);},getP:()=>({x:P.x,z:P.z}),state:()=>state,hud:()=>({ch:qCh.textContent,goal:qGoal.textContent,sub:qSub.textContent,stone:hEl.st.textContent,coins:hEl.co.textContent}),
   marker:()=>({hidden:marker.hidden,t:markerTxt.textContent,r:marker.getBoundingClientRect().toJSON()})});

@@ -1,0 +1,17 @@
+PASS K1 tezgâh parası ikinci kez alınamaz | canlı={'coins': 224, 'cash': 0} kayıt={'coins': 224, 'cash': 0} (bakiye+tezgâh 224 kalmalı)
+PASS K3 saat geri-ileri hilesi | ileri={"n":360,"c":360,"mins":120} geri=null tekrar ileri=null · gerçekten 1 saat sonra={"n":180,"c":180,"mins":60}
+PASS K4 taşınan yük korunur | yeniden açınca elde=['water', 'water', 'water'] · dolu standda saka yükü=[3] → açılışta=[3]
+PASS K6 geç gelen mevsim ekranı | {"ids": [], "vis": {"map": true, "title": false, "sheet": false, "state": "hub"}}
+PASS K2 sıra sonu ödülü + bölüm kaydı birlikte | {"state": "cine", "course": 2, "savedCourse": 2, "savedIn": 0, "dCoins": 22}
+PASS K5 dolu atölyede kilit yok | ok: 'Geri bırak: Ham taş' · ham taşa dönünce el=[] · sonra kesme taş alındı=['block', 'block']
+PASS T2 durum çipi | dolu atölyede: '⛔ Dolu: önce boşalsın' · kesme taşla taşçı girişinde: '✖ Yanlış malzeme'
+PASS K9 Bölüm 7 tam yük bonusu (kapasite 3) | 3 kiriş: +27 bereket (3×7 + 6 bonus beklenir)
+PASS K12 hareket azaltmada ok sallanmaz | ok ölçeği 6 karede: [1, 1, 1, 1, 1, 1]
+PASS K10 alınan yükseltme dairesi belleği bırakır | doku sayısı 26 → 24 (4 alım)
+PASS K8 bozuk bölüm numarası | {"run": null, "ids": [], "vis": {"map": true, "title": false, "sheet": false, "state": "hub"}}
+PASS T1 kısa giriş (Bölüm 1) | kısa: 3 sahne, 14.0 sn oyun zamanı · "Girişi uzun izle" düğmesi=True → 5 sahne, 24.5 sn
+PASS T4 Hacılara Hizmet öğreticisi (4 adım) | 1/4 · Zemzem'den su al: mavi d → 2/4 · Suyu Su ikramı standına  → 3/4 · Sıradaki hacıya ikram ed → 4/4 · Tezgâhtaki bereketi topl → Harika! Stantları dolu tut, ha
+PASS T4 mevsim ustalık hedefi | görev satırı: 'Ustalık: kimse beklerken küsüp gitmesin'
+PASS Satış kilidi (uygulama paketi) | kilitli rozetler=[False, False, True, True, True, True, True, True] · 3. bölüm → satın alma ekranı ('Satın al'; 'Satın alma yalnızca uygulama mağazası sürümünde çalışır.') · 2. bölüm açık=play · doğrudan 5. bölüm de kilitli · açılınca 3. bölüm=play
+PASS Web sürümü tam açık | {"full": true, "store": false}
+TOPLAM 16 / 16

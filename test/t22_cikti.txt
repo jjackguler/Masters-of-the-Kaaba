@@ -1,12 +1,12 @@
 PASS açılış + Bölüm 1 (tr) | state=play hud={'ch': 'BÖLÜM 1 · Sel Gecesi', 'goal': 'Çamur: 0/12', 'sub': 'Git: Çamur', 'stone': '0/4', 'coins': '0'} hata=[]
 PASS açılış + Bölüm 1 (en) | state=play hud={'ch': 'CHAPTER 1 · The Flood', 'goal': 'Mud: 0/12', 'sub': 'Go to: Mud', 'stone': '0/4', 'coins': '0'} hata=[]
 PASS T03 sonuç→sonraki→geri ×20 | boş ekran=[] hata=[]
-PASS T04 kitap/harita açıkken simülasyon durur | kitap açık: önce={'t': 0.7000000000000001, 'raw': 12, 'cut': 0} 30 sn sonra={'t': 0.7000000000000001, 'raw': 12, 'cut': 0, 'active': False}; Esc kitabı kapattı=True, duraklatma açılmadı=True; harita 10 sn: R.t 0.85→0.85; kapatınca 2 sn sonra R.t=3.00
+PASS T04 kitap/harita açıkken simülasyon durur | kitap açık: önce={'t': 0.7000000000000001, 'raw': 12, 'cut': 0} 30 sn sonra={'t': 0.7000000000000001, 'raw': 12, 'cut': 0, 'active': False}; Esc kitabı kapattı=True, duraklatma açılmadı=True; harita 10 sn: R.t 0.85→0.85; kapatınca 2 sn sonra R.t=2.95
 PASS T05 Bölüm 4 tek sonuç | aynı kare: şafak kazandı=True (['kr-map', 'kr-next', 'kr-re']); erken öfke: yalnız kavga ekranı=True (['kf-map', 'kf-re'])
 PASS T08 hedef envantere göre | {"['raw']": ["Taşçı", true], "['block']": ["Duvar", true], "['water']": ["Zemzem", true], "['water']T.S.setR({thirsty:tr": ["Ustalar", true], "[]T.S.setR({thirsty:fa": ["Ham taş", true], "['beam']": ["Duvar", true]}
 PASS T11/T12 bereket defteri + bonus | 4 kesme taş: profil +28 / bölüm +28 (beklenen 20+8 bonus); bitişte bekleyen 4 yük bonusu: +28/+28; Bölüm 7 bonus eşiği=4 (D.cap=8)
 PASS T14 ateş havuzu (20 deneme) | FIRES 8 → 8
-PASS T13 ara sahne belleği (10 tekrar) | renderer.info önce={'geometries': 303, 'textures': 42} sonra={'geometries': 305, 'textures': 44}
+PASS T13 ara sahne belleği (10 tekrar) | renderer.info önce={'geometries': 287, 'textures': 26} sonra={'geometries': 289, 'textures': 28}
 PASS T19 süre biçimi | 119.6 sn → "2:00"; sonuç ekranı: "Sırada: 🌦️ Bölüm 6 · Yükselen Duvarlar"
 PASS T10 yükseltme onayla alınır | 5 sn dairede bekleyince bereket=100 (harcanmadı), kart='🎒\nTaşıma +2\n🪙 30\nBir seferde 2 yük daha taşırsın.'; 'Al' sonrası bereket=70 kapasite=6
 PASS T10 yetmeyen bereket | düğme kapalı=True kart='👷\n2. taşçı\n🪙 60\nİkinci taşçı: kesme taş iki kat hızlı çıkar. (50 bereket daha lazım)'

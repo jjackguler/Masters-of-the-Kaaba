@@ -17,7 +17,7 @@
  {
   "test": "T04 kitap/harita açıkken simülasyon durur",
   "ok": true,
-  "detail": "kitap açık: önce={'t': 0.7000000000000001, 'raw': 12, 'cut': 0} 30 sn sonra={'t': 0.7000000000000001, 'raw': 12, 'cut': 0, 'active': False}; Esc kitabı kapattı=True, duraklatma açılmadı=True; harita 10 sn: R.t 0.85→0.85; kapatınca 2 sn sonra R.t=3.00"
+  "detail": "kitap açık: önce={'t': 0.7000000000000001, 'raw': 12, 'cut': 0} 30 sn sonra={'t': 0.7000000000000001, 'raw': 12, 'cut': 0, 'active': False}; Esc kitabı kapattı=True, duraklatma açılmadı=True; harita 10 sn: R.t 0.85→0.85; kapatınca 2 sn sonra R.t=2.95"
  },
  {
   "test": "T05 Bölüm 4 tek sonuç",
@@ -42,7 +42,7 @@
  {
   "test": "T13 ara sahne belleği (10 tekrar)",
   "ok": true,
-  "detail": "renderer.info önce={'geometries': 303, 'textures': 42} sonra={'geometries': 305, 'textures': 44}"
+  "detail": "renderer.info önce={'geometries': 287, 'textures': 26} sonra={'geometries': 289, 'textures': 28}"
  },
  {
   "test": "T19 süre biçimi",

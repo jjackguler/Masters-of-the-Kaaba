@@ -6,6 +6,7 @@ Single command (any OS, Python 3.8+):
 Outputs
   bekke-kabe.html              web build (three.js r128 from cdnjs + Google Fonts); this is what the claude.ai artifact publishes
   dist/web/kabe-ustalari.html  same web build, under the product name
+  dist/demo/kaaba-builders-demo.html  website demo (chapters 1-2; later chapters say the full game is in the app stores)
   dist/app/www/                offline build for Capacitor (iOS/Android): local three.js + local fonts, no network requests
   dist/BUILD_MANIFEST.json     SHA-256 of every input and output, Python version
 """
@@ -110,9 +111,12 @@ MAIN = '<script>\n(function(){\nif(typeof THREE==="undefined"){window.__engineMi
 
 # ---------- 4a. web build ----------
 CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-web = head + '\n' + ENGINE_GUARD + '<script src="%s" onerror="window.__engineMissing()"></script>\n' % CDN + MAIN.replace('__STORE_BUILD__', 'false', 1)
+web = head + '\n' + ENGINE_GUARD + '<script src="%s" onerror="window.__engineMissing()"></script>\n' % CDN + MAIN.replace('__STORE_BUILD__', 'false;const DEMO_BUILD=false', 1)
 wr('bekke-kabe.html', web)
 wr('dist/web/kabe-ustalari.html', web)
+# ---------- 4a'. website demo: chapters 1-2, the rest shows "coming to the stores" (no purchase on the web) ----------
+demo = head + '\n' + ENGINE_GUARD + '<script src="%s" onerror="window.__engineMissing()"></script>\n' % CDN + MAIN.replace('__STORE_BUILD__', 'true;const DEMO_BUILD=true', 1)
+wr('dist/demo/kaaba-builders-demo.html', demo)
 
 # ---------- 4b. offline app build ----------
 app_head = re.sub(r'<link rel="preconnect"[^>]*>\n?', '', head)
@@ -121,7 +125,7 @@ app_head, n = re.subn(r'<link rel="stylesheet" href="https://fonts\.googleapis\.
 assert n == 1, 'Google Fonts link not found in head.html'
 i = app_head.index('</style>') + len('</style>')
 app = ('<!doctype html>\n<html lang="tr">\n<head>\n<meta charset="utf-8">\n<meta name="theme-color" content="#2a211b">\n' + app_head[:i] + '\n</head>\n<body>\n'
-       + app_head[i:] + '\n' + ENGINE_GUARD + '<script src="lib/three.min.js" onerror="window.__engineMissing()"></script>\n' + MAIN.replace('__STORE_BUILD__', 'true', 1) + '</body>\n</html>\n')
+       + app_head[i:] + '\n' + ENGINE_GUARD + '<script src="lib/three.min.js" onerror="window.__engineMissing()"></script>\n' + MAIN.replace('__STORE_BUILD__', 'true;const DEMO_BUILD=false', 1) + '</body>\n</html>\n')
 ext = [u for u in re.findall(r'(?:src|href)="(https?://[^"]+)"', app)]
 assert not ext, 'offline build still references the network: %s' % ext
 W = 'dist/app/www'
@@ -138,7 +142,7 @@ shutil.copy('vendor/fonts/OFL-Alegreya.txt', W + '/licenses/Alegreya-OFL.txt')
 shutil.copy('vendor/fonts/OFL-Alegreya-Sans.txt', W + '/licenses/Alegreya-Sans-OFL.txt')
 
 # ---------- 5. manifest ----------
-outs = ['bekke-kabe.html', 'dist/web/kabe-ustalari.html'] + sorted(os.path.join(dp, f).replace('\\', '/') for dp, _, fs in os.walk(W) for f in fs)
+outs = ['bekke-kabe.html', 'dist/web/kabe-ustalari.html', 'dist/demo/kaaba-builders-demo.html'] + sorted(os.path.join(dp, f).replace('\\', '/') for dp, _, fs in os.walk(W) for f in fs)
 man = {'python': platform.python_version(), 'command': 'python build.py',
        'inputs': {p: sha(p) for p in sorted(list(INPUTS) + ['vendor/fonts/' + f for f in font_files])},
        'generated_intermediates': ['l1.t.js', 'l2.t.js', 'l3.t.js', 'l4.t.js', 'l5.t.js', 'l6.t.js', 'l7.t.js', 'strings.json'],

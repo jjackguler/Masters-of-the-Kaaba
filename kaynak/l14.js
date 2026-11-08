@@ -25,6 +25,13 @@ function iapBuy(){const C=window.CdvPurchase;if(!C||!IAP.ready){IAP.err=L2('Mağ
 function iapRestore(){const C=window.CdvPurchase;if(!C||!IAP.ready){IAP.err=L2('Mağazaya bağlanılamadı.','Could not reach the store.');refreshPaywall();return;}
   IAP.busy=true;refreshPaywall();C.store.restorePurchases().then(()=>{IAP.busy=false;const p=C.store.get(PROD_ID);if(p&&p.owned)grantFull('restore');else{IAP.err=L2('Bu hesapta önceki bir satın alma bulunamadı.','No earlier purchase was found on this account.');refreshPaywall();}});}
 function paywall(from){state=state==='play'?'ui':state;
+  if(DEMO_BUILD){sheet(`<span class="ic">🕋</span><p class="eb">${L2('Ücretsiz deneme','Free demo')}</p><h2>${L2('Hikâyenin devamı','The rest of the story')}</h2>
+    <p>${L2('Bu web sürümünde ilk iki bölüm ücretsiz. Oyunun tamamı App Store ve Google Play\'e geliyor:','This web demo has the first two chapters. The full game is coming to the App Store and Google Play:')}</p>
+    <div class="task"><span>🧱</span><span>${L2('5 bölüm daha: taşçılar, Kanlı Yemin, gemi, yükselen duvarlar, çatı ve kapı','5 more chapters: the stonecutters, the oath, the ship, the rising walls, the roof and the door')}</span></div>
+    <div class="task"><span>🫖</span><span>${L2('Hacılara Hizmet: hikâyeden sonra sınırsız hac mevsimleri','Serving the Pilgrims: endless seasons after the story')}</span></div>
+    <p style="text-align:center;font:700 14px var(--f-ui);margin:10px 0 14px">${L2('Tek seferlik · reklam yok · abonelik yok','One-time · no ads · no subscription')}</p>
+    <div class="kbtns"><button class="kbtn" id="kpw-x" data-back>${L2('Haritaya dön','Back to the map')}</button></div>`,c=>{
+    c.querySelector('#kpw-x').onclick=()=>{closeSheet();if(KM.hidden&&KT.hidden)showMap();};});return;}
   sheet(`<span class="ic">🕋</span><p class="eb">${L2('Tam sürüm','Full version')}</p><h2>${L2('Hikâyenin devamı','The rest of the story')}</h2>
     <p>${L2('İlk iki bölüm ücretsiz. Tek seferlik satın almayla şunlar açılır:','The first two chapters are free. One purchase opens:')}</p>
     <div class="task"><span>🧱</span><span>${L2('5 bölüm daha: taşçılar, Kanlı Yemin, gemi, yükselen duvarlar, çatı ve kapı','5 more chapters: the stonecutters, the oath, the ship, the rising walls, the roof and the door')}</span></div>

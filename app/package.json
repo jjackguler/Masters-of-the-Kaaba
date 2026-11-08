@@ -1,0 +1,29 @@
+{
+  "name": "kabe-ustalari",
+  "version": "1.0.0",
+  "description": "Kâbe Ustaları / Kaaba Builders: Mecca 605",
+  "main": "index.js",
+  "scripts": {
+    "sync": "npx cap sync",
+    "assets": "npx @capacitor/assets generate --iconBackgroundColor \"#2a211b\" --splashBackgroundColor \"#2a211b\"",
+    "android": "npx cap open android",
+    "ios": "npx cap open ios"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^6.2.3",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/cli": "^6.2.3",
+    "@capacitor/core": "^6.2.3",
+    "@capacitor/haptics": "^6.0.3",
+    "@capacitor/ios": "^6.2.3",
+    "@fontsource/alegreya": "^5.3.0",
+    "@fontsource/alegreya-sans": "^5.3.0"
+  },
+  "private": true,
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0"
+  }
+}

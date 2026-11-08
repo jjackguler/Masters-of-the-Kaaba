@@ -1,0 +1,9 @@
+{
+  "appId": "com.kabeustalari.game",
+  "appName": "Kâbe Ustaları",
+  "webDir": "www",
+  "backgroundColor": "#2a211b",
+  "android": { "backgroundColor": "#2a211b", "allowMixedContent": false },
+  "ios": { "backgroundColor": "#2a211b", "contentInset": "never" },
+  "plugins": { "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#2a211b", "showSpinner": false } }
+}

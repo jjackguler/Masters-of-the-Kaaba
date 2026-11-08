@@ -1,0 +1,32 @@
+PASS açılış + Bölüm 1 (tr) | state=play hud={'ch': 'BÖLÜM 1 · Sel Gecesi', 'goal': 'Çamur: 0/12', 'sub': 'Git: Çamur', 'stone': '0/4', 'coins': '0'} hata=[]
+PASS açılış + Bölüm 1 (en) | state=play hud={'ch': 'CHAPTER 1 · The Flood', 'goal': 'Mud: 0/12', 'sub': 'Go to: Mud', 'stone': '0/4', 'coins': '0'} hata=[]
+PASS T03 sonuç→sonraki→geri ×20 | boş ekran=[] hata=[]
+PASS T04 kitap/harita açıkken simülasyon durur | kitap açık: önce={'t': 0.7000000000000001, 'raw': 12, 'cut': 0} 30 sn sonra={'t': 0.7000000000000001, 'raw': 12, 'cut': 0, 'active': False}; Esc kitabı kapattı=True, duraklatma açılmadı=True; harita 10 sn: R.t 0.85→0.85; kapatınca 2 sn sonra R.t=3.00
+PASS T05 Bölüm 4 tek sonuç | aynı kare: şafak kazandı=True (['kr-map', 'kr-next', 'kr-re']); erken öfke: yalnız kavga ekranı=True (['kf-map', 'kf-re'])
+PASS T08 hedef envantere göre | {"['raw']": ["Taşçı", true], "['block']": ["Duvar", true], "['water']": ["Zemzem", true], "['water']T.S.setR({thirsty:tr": ["Ustalar", true], "[]T.S.setR({thirsty:fa": ["Ham taş", true], "['beam']": ["Duvar", true]}
+PASS T11/T12 bereket defteri + bonus | 4 kesme taş: profil +28 / bölüm +28 (beklenen 20+8 bonus); bitişte bekleyen 4 yük bonusu: +28/+28; Bölüm 7 bonus eşiği=4 (D.cap=8)
+PASS T14 ateş havuzu (20 deneme) | FIRES 8 → 8
+PASS T13 ara sahne belleği (10 tekrar) | renderer.info önce={'geometries': 303, 'textures': 42} sonra={'geometries': 305, 'textures': 44}
+PASS T19 süre biçimi | 119.6 sn → "2:00"; sonuç ekranı: "Sırada: 🌦️ Bölüm 6 · Yükselen Duvarlar"
+PASS T10 yükseltme onayla alınır | 5 sn dairede bekleyince bereket=100 (harcanmadı), kart='🎒\nTaşıma +2\n🪙 30\nBir seferde 2 yük daha taşırsın.'; 'Al' sonrası bereket=70 kapasite=6
+PASS T10 yetmeyen bereket | düğme kapalı=True kart='👷\n2. taşçı\n🪙 60\nİkinci taşçı: kesme taş iki kat hızlı çıkar. (50 bereket daha lazım)'
+PASS T15 duraklatınca tuşlar bırakılır | W basılı kaldı; duraklat→devam sonrası 0.6 sn hareket=0.000 m
+PASS Geri tuşu (Android/Esc) | oyunda→duraklat {'map': False, 'title': False, 'sheet': True, 'state': 'ui'}, tekrar→devam {'map': False, 'title': False, 'sheet': False, 'state': 'play'}, haritada→başlık {'map': False, 'title': True, 'sheet': False, 'state': 'title'}, başlıkta→uygulama kapanır=True
+PASS T17 Kontroller/Hakkında içerik gösterir | kontroller 275 harf, hakkında 452 harf
+PASS T18 hareket azaltma + titreşim ayarı | Hareket: Azaltılmış body.rm=True · Titreşim: Kapalı
+PASS T18 sistemde "hareketi azalt" açıkken | body.rm=True
+PASS T06 kaydet→kapat→aç→devam (Bölüm 1-7) | {"1": true, "2": true, "3": true, "4": true, "5": true, "6": true, "7": true}
+PASS Arka plana geçince duraklat + kaydet | {"sheet": true, "run": true}
+PASS T09 bozuk kayıtlar | {"bozuk JSON": {"unl": 1, "coins": 0, "cap": 4, "stars": {}, "up": {}, "run": null}, "null": {"unl": 1, "coins": 0, "cap": 4, "stars": {}, "up": {}, "run": null}, "yanlış tipler": {"unl": 2, "coins": 0, "cap": 6, "stars": {"1": 3}, "up": {"cap1": true}, "run": null}, "dev sayılar": {"unl": 7, "coins": 10000000, "cap": 4, "stars": {"7": 3}, "up": {}, "run": null}} · yedekten dönüş={'unl': 5, 'coins': 77}
+PASS T07 keşif defteri kalıcı | kayıttaki defter=['k_mizab']
+PASS Hikâye 1→7 baştan sona | [(1, True, 2), (2, True, 3), (3, True, 4), (4, True, 5), (5, True, 6), (6, True, 7), (7, True, 7)] · harita düğümü={'lock': False, 't': '🫖\n∞\nHacılara Hizmet\nMevsim 1'} hata=[]
+PASS Hacılara Hizmet: hikâye bitmeden kilitli | {"lock": true, "state": "hub"}
+PASS Hacılara Hizmet açılır | {'state': 'play', 'ch': 8, 'hud': {'ch': '🫖 Hacılara Hizmet · Mevsim 1', 'goal': 'İkram: 0/15', 'sub': 'Git: Zemzem', 'stone': '0/8', 'coins': '2000'}, 'pads': ['standD', 'mcap1', 'saka'], 'cap': 8} · tarih notu var=True
+PASS Hacılar sıraya girer, ikram edilir, bereket toplanır | 45 sn: ikram=6 tezgâhta=12 · tezgâha gelince +12 bereket, stok 0→2
+PASS Hacı tavaf turu ve çıkış | 80 sn içinde görülen durumlar=['in', 'lap', 'out', 'q', 'tw'] (q=sıra, tw=tavafa yürüyüş, lap=tavaf, out=çıkış); şu an aktif=8
+PASS Yardımcı alımı + saka su taşır | alımlar=[('standD', True, True), ('mcap1', True, True), ('saka', True, True)] · saka sonrası su stoku=5 · yeni daireler=['standB', 'shade', 'hurmaci']
+PASS Hac mevsimi biter, sonraki başlar | ekran=['km-leave', 'km-next'] sonra={'season': 2, 'ss': 0, 'state': 'play', 'next': 25}
+PASS Sen yokken kazanç (1 saat, saka) | +180 bereket (beklenen: 3600 sn / 20 sn = 180 ikram × 2 × %50 = 180)
+PASS Hacılara Hizmet kaydı kalıcı | {"season": 2, "up": ["standD", "mcap1", "saka"], "served": 197}
+PASS Hedef etiketi ekranda kalır (360 px) | 16/16 karede tam görünür
+TOPLAM 31 / 31

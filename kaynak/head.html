@@ -1,0 +1,209 @@
+<meta charset="utf-8">
+<title>Kâbe Ustaları: Mekke 605</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,500;0,700;0,800;1,500&family=Alegreya+Sans:wght@400;500;700;800&display=swap">
+<style>
+/* Warm daylight UI: cream panels, teal accent, gold for rewards. Panels float over the scene like cards on a sunlit wall. */
+:root{
+  --panel:rgba(255,249,238,.94);--panel-2:rgba(255,249,238,.78);
+  --ink:#2a211b;--ink-soft:#6a5a4c;--line:rgba(42,33,27,.14);
+  --teal:#1f6f78;--teal-d:#17565d;--gold:#d39a2c;--rose:#b5523b;--green:#4f8a4a;
+  --shadow:0 10px 30px rgba(42,33,27,.18);
+  --f-display:'Alegreya','Iowan Old Style',Georgia,serif;
+  --f-ui:'Alegreya Sans','Segoe UI',system-ui,sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%;overflow:hidden}
+body{margin:0;background:#e9dcc4;color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.45;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+#stage{position:fixed;inset:0;z-index:0}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* ---------- HUD ---------- */
+.hud{position:fixed;inset:0;z-index:2;pointer-events:none;padding-top:calc(env(safe-area-inset-top,0px) + 12px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transition:opacity .35s}
+.toprow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.quest{background:var(--panel-2);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:14px;padding:9px 13px 10px;max-width:min(360px,52vw);box-shadow:0 4px 14px rgba(42,33,27,.1)}
+.quest .ch{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal);margin:0}
+.quest .goal{font-family:var(--f-display);font-weight:700;font-size:clamp(16px,2.1vw,19px);line-height:1.2;margin:2px 0 0;text-wrap:balance}
+.quest .sub{font-size:13px;color:var(--ink-soft);margin:3px 0 0}
+.res{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.chipr{display:flex;align-items:center;gap:5px;background:var(--panel-2);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:999px;padding:4px 10px 4px 6px;font-weight:800;font-variant-numeric:tabular-nums;box-shadow:0 3px 10px rgba(42,33,27,.08);transition:transform .2s}
+.chipr.pop{transform:scale(1.18)}
+.chipr svg{width:20px;height:20px;display:block}
+.ibtn{pointer-events:auto;width:40px;height:40px;border-radius:12px;border:0;background:var(--panel);box-shadow:0 3px 10px rgba(42,33,27,.12);display:grid;place-items:center}
+.ibtn svg{width:22px;height:22px}
+.ibtn .dot{position:absolute;margin:-18px 0 0 18px;width:9px;height:9px;border-radius:50%;background:var(--rose)}
+.compass{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);width:min(360px,34vw);height:30px;overflow:hidden;border-radius:999px;background:var(--panel-2);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 3px 10px rgba(42,33,27,.08);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)}
+.compass span{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:12px;font-weight:800;color:var(--ink-soft);white-space:nowrap}
+.compass span.q{width:12px;height:12px;border-radius:3px;background:var(--gold);transform:translate(-50%,-50%) rotate(45deg)}
+.compass span.k{width:10px;height:10px;background:var(--ink);border-radius:2px}
+.compass::after{content:"";position:absolute;left:50%;top:3px;bottom:3px;width:2px;background:var(--teal);border-radius:2px}
+@media (max-width:700px){.compass{top:calc(env(safe-area-inset-top,0px) + 64px);width:56vw}}
+#toast{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 54px);transform:translateX(-50%);background:var(--panel);border-radius:12px;padding:7px 14px;font-weight:700;box-shadow:var(--shadow);max-width:min(460px,86vw);text-align:center;transition:opacity .35s,transform .35s;opacity:0}
+@media (max-width:700px){#toast{top:calc(env(safe-area-inset-top,0px) + 102px)}}
+#toast.on{opacity:1}
+.botrow{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;justify-content:center;align-items:flex-end;min-height:44px}
+#prompt{background:var(--panel);border-radius:12px;padding:7px 13px;font-size:15px;font-weight:700;box-shadow:var(--shadow)}
+#prompt kbd{font-family:var(--f-ui);font-weight:800;background:var(--ink);color:#fff;border-radius:6px;padding:1px 7px;margin-right:7px}
+.touch #prompt{display:none!important}
+#carry{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 66px);transform:translateX(-50%);font-size:13px;font-weight:700;color:var(--ink);background:var(--panel-2);border-radius:999px;padding:3px 11px}
+.tbtns{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;gap:10px;align-items:flex-end}
+.tbtn{pointer-events:auto;width:74px;height:74px;border-radius:50%;background:rgba(255,249,238,.86);border:0;box-shadow:var(--shadow);font-weight:800;font-size:14px;touch-action:none}
+.tbtn.act{width:96px;height:96px;background:var(--teal);color:#fff;font-size:14px;line-height:1.1;padding:8px}
+.hint{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);font-size:13px;color:var(--ink);background:var(--panel-2);border-radius:999px;padding:3px 11px}
+#joy{position:fixed;width:124px;height:124px;margin:-62px 0 0 -62px;border-radius:50%;background:rgba(255,249,238,.3);border:2px solid rgba(255,249,238,.9);z-index:3;pointer-events:none}
+#joy i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--panel);box-shadow:var(--shadow)}
+#marker{position:fixed;left:0;top:0;z-index:1;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:3px}
+#marker .pin{width:18px;height:18px;border-radius:5px;background:var(--gold);transform:rotate(45deg);box-shadow:0 2px 8px rgba(0,0,0,.25);border:2px solid #fff}
+#marker .txt{font-weight:800;font-size:13px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);white-space:nowrap}
+#marker.edge .pin{background:var(--rose)}
+.labels{position:fixed;inset:0;z-index:1;pointer-events:none}
+.lbl{position:absolute;left:0;top:0;white-space:nowrap;font-weight:800;font-size:13px;color:#fff;background:rgba(42,33,27,.55);padding:2px 8px;border-radius:999px;transform:translate(-50%,-100%);transition:opacity .2s}
+.lbl.q::before{content:"!";display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--gold);color:var(--ink);margin-right:5px;font-size:12px}
+.lbl.r::before{content:"✓";display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--green);color:#fff;margin-right:5px;font-size:11px}
+
+/* ---------- dialog / cards ---------- */
+.dlgwrap{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:4;display:flex;justify-content:center}
+#dlg{pointer-events:auto;width:min(620px,100%);background:var(--panel);border-radius:18px;padding:14px 18px 14px;box-shadow:var(--shadow);animation:rise .3s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#dlg .who{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--teal);margin:0 0 3px}
+#dlg .say{font-family:var(--f-display);font-size:18px;line-height:1.35;margin:0 0 10px;text-wrap:pretty}
+#dlg .opts{display:flex;flex-direction:column;gap:7px}
+#dlg .opt{text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:9px 12px;font-size:15px;font-weight:600;min-height:44px}
+#dlg .opt:hover{border-color:var(--teal)}
+#dlg .opt.main{background:var(--teal);color:#fff;border-color:var(--teal);text-align:center;font-weight:800}
+.tension{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
+.tension .bar{flex:1;height:8px;border-radius:99px;background:rgba(42,33,27,.12);overflow:hidden}
+.tension .bar i{display:block;height:100%;width:50%;background:linear-gradient(90deg,var(--green),var(--gold),var(--rose));transition:width .5s}
+.cardwrap{position:fixed;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#card{pointer-events:auto;width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--panel);border-radius:20px;padding:20px 22px 18px;box-shadow:0 20px 60px rgba(42,33,27,.3);animation:rise .4s ease-out}
+#card .eb{font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:var(--gold);margin:0 0 4px}
+#card h2{font-family:var(--f-display);font-weight:800;font-size:26px;line-height:1.1;margin:0 0 8px;text-wrap:balance}
+#card p.t{margin:0 0 12px;font-size:16px;text-wrap:pretty;white-space:pre-line}
+#card p.t .q{font-family:var(--f-display);font-size:19px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.chip{font-size:12px;padding:2px 8px 3px;border-radius:999px;background:rgba(31,111,120,.1);color:var(--teal-d);font-weight:700}
+.chip.est{background:none;border:1.5px dashed var(--rose);color:var(--rose)}
+.go{background:var(--teal);color:#fff;border:0;border-radius:12px;padding:10px 18px;font-weight:800;min-height:44px}
+.go:hover{background:var(--teal-d)}
+.go.alt{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+
+/* ---------- overlays: book, map, title ---------- */
+.ov{position:fixed;inset:0;z-index:6;background:rgba(42,33,27,.45);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 16px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 16px) max(16px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--panel);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:min(860px,100%);max-height:100%;display:flex;flex-direction:column;overflow:hidden}
+.sheet header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.sheet header h2{font-family:var(--f-display);font-weight:800;font-size:24px;margin:0}
+.sheet header .meta{font-size:13px;color:var(--ink-soft);font-weight:700}
+.x{border:0;background:rgba(42,33,27,.07);border-radius:10px;width:40px;height:40px;font-size:20px}
+.book{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);min-height:0;flex:1}
+@media (max-width:640px){.book{grid-template-columns:1fr}.book .detail{border-top:1px solid var(--line)}}
+.book .list{overflow:auto;padding:10px 12px;border-right:1px solid var(--line)}
+.book .grp{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal);margin:10px 4px 4px}
+.book .it{display:flex;width:100%;text-align:left;align-items:center;gap:8px;border:0;background:none;border-radius:10px;padding:7px 8px;font-weight:700;min-height:40px}
+.book .it:hover,.book .it[aria-current="true"]{background:rgba(31,111,120,.1)}
+.book .it.lock{color:var(--ink-soft);font-weight:500}
+.book .it i{width:10px;height:10px;border-radius:3px;background:var(--gold);flex:none}
+.book .it.lock i{background:rgba(42,33,27,.18)}
+.book .detail{overflow:auto;padding:16px 20px}
+.book .detail h3{font-family:var(--f-display);font-size:24px;font-weight:800;margin:0 0 6px}
+.book .detail p{margin:0 0 10px;font-size:16px;max-width:60ch;white-space:pre-line}
+#mapc{display:block;width:100%;height:100%;touch-action:none}
+.mapbox{flex:1;min-height:0;position:relative;background:#e8d8b8}
+.legend{position:absolute;left:12px;bottom:10px;font-size:12px;font-weight:700;background:var(--panel-2);border-radius:10px;padding:6px 10px;display:flex;gap:10px;flex-wrap:wrap}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+
+#title{position:fixed;inset:0;z-index:7;display:flex;align-items:flex-end;justify-content:flex-start;background:linear-gradient(180deg,rgba(42,33,27,0) 35%,rgba(42,33,27,.55));padding:0 max(24px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 28px) max(24px,env(safe-area-inset-left,0px))}
+.tbox{max-width:520px;color:#fff}
+.tbox .over{font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:#ffe2a6;margin:0}
+.tbox h1{font-family:var(--f-display);font-weight:800;font-size:clamp(54px,10vw,92px);line-height:.95;margin:4px 0 2px;letter-spacing:-.02em;text-shadow:0 4px 30px rgba(0,0,0,.35)}
+.tbox .sub{font-family:var(--f-display);font-size:clamp(18px,2.6vw,22px);font-weight:500;margin:0 0 18px;text-shadow:0 2px 10px rgba(0,0,0,.4)}
+.tbox .btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.tbox .go{font-size:16px;padding:12px 22px}
+.tbox .go.alt{background:rgba(255,249,238,.92)}
+.tbox .note{font-size:13px;color:#fff6e4;max-width:52ch;margin:0;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.panel{background:var(--panel);color:var(--ink);border-radius:16px;padding:12px 16px;margin:0 0 12px;max-width:520px;font-size:14px}
+.panel dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}
+.panel dt{font-weight:800}.panel dd{margin:0}
+#fade{position:fixed;inset:0;z-index:8;background:#140f0b;opacity:0;pointer-events:none;transition:opacity .8s}
+#fade.on{opacity:1}
+.cine{position:fixed;left:0;right:0;height:0;background:#140f0b;z-index:3;transition:height .6s;pointer-events:none}
+.cine.t{top:0}.cine.b{bottom:0}
+body.cinema .cine{height:9vh}
+body.cinema .hud{opacity:0!important}
+#subt{position:fixed;left:50%;bottom:calc(9vh + 14px);transform:translateX(-50%);z-index:4;color:#fff;font-family:var(--f-display);font-size:clamp(17px,2.4vw,21px);text-align:center;max-width:min(680px,90vw);text-shadow:0 2px 8px rgba(0,0,0,.7);pointer-events:none}
+@media (max-width:560px){.compass{display:none}.chipr{padding:3px 7px 3px 4px;font-size:13px;gap:3px}.chipr svg{width:16px;height:16px}.ibtn{width:36px;height:36px;border-radius:10px}.res{gap:4px;max-width:54vw}
+  .quest{max-width:44vw;padding:7px 10px}.quest .goal{font-size:14px}.quest .sub{font-size:12px}#toast{top:calc(env(safe-area-inset-top,0px) + 118px);font-size:14px}}
+/* on-screen direction pad: big, labelled, for players new to games */
+.dpad{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(3,58px);gap:5px;pointer-events:none}
+.dpad button{pointer-events:auto;border:0;border-radius:16px;background:rgba(255,249,238,.88);box-shadow:var(--shadow);display:grid;place-items:center;touch-action:none;-webkit-tap-highlight-color:transparent}
+.dpad button svg{width:28px;height:28px}
+.dpad button.on,.dpad button:active{background:var(--teal)}
+.dpad button.on svg path,.dpad button:active svg path{stroke:#fff}
+.dpad .run{font-weight:800;font-size:13px;color:var(--ink);border-radius:50%}
+.dpad .run.on{color:#fff}
+.dpad .up{grid-area:1/2}.dpad .lf{grid-area:2/1}.dpad .run{grid-area:2/2}.dpad .rt{grid-area:2/3}.dpad .dn{grid-area:3/2}
+@media (max-width:420px){.dpad{grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px}.tbtn{width:64px;height:64px}.tbtn.act{width:84px;height:84px}}
+@media (prefers-reduced-motion:reduce){#dlg,#card{animation:none}}
+</style>
+
+<div id="stage" aria-label="Mekke vadisi ve Kâbe, üçüncü şahıs görünüm"></div>
+<div class="labels" id="labels"></div>
+<div id="marker" hidden><div class="pin"></div><div class="txt"></div></div>
+
+<div class="hud pad" id="hud" style="opacity:0">
+  <div class="toprow">
+    <div class="quest" aria-live="polite"><p class="ch" id="q-ch">Bölüm I · Sel</p><p class="goal" id="q-goal">…</p><p class="sub" id="q-sub"></p></div>
+    <div class="res">
+      <span class="chipr" id="r-stone" title="Taş"><svg viewBox="0 0 24 24"><path d="M4 16l3-7 6-3 6 4 1 6-5 3H8z" fill="#8f8478" stroke="#4a3f36" stroke-width="1.6" stroke-linejoin="round"/></svg><b>0</b></span>
+      <span class="chipr" id="r-wood" title="Kereste"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="4" rx="1.5" fill="#b98552" stroke="#5c3b1f" stroke-width="1.5"/><rect x="3" y="13" width="18" height="4" rx="1.5" fill="#a5733f" stroke="#5c3b1f" stroke-width="1.5"/></svg><b>0</b></span>
+      <span class="chipr" id="r-good" title="İyilik"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="#d9584a"/></svg><b>0</b></span>
+      <span class="chipr" id="r-kabe" title="Kâbe"><svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" fill="#2b2522"/><rect x="5" y="9" width="14" height="1.6" fill="#a5733f"/><rect x="5" y="13" width="14" height="1.6" fill="#a5733f"/></svg><b>0%</b></span>
+      <button class="ibtn" id="b-book" aria-label="Mekke Defteri (B)"><svg viewBox="0 0 24 24" fill="none" stroke="#2a211b" stroke-width="2" stroke-linejoin="round"><path d="M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1z"/><path d="M12 6v14"/></svg><span class="dot" id="bookdot" hidden></span></button>
+      <button class="ibtn" id="b-map" aria-label="Harita (M)"><svg viewBox="0 0 24 24" fill="none" stroke="#2a211b" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg></button>
+      <button class="ibtn" id="b-menu" aria-label="Menü (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="#2a211b" stroke-width="2.2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+    </div>
+  </div>
+  <div class="compass" id="compass" aria-hidden="true"></div>
+  <div id="toast" role="status"></div>
+  <div class="hint" id="hint"></div>
+  <div id="carry" hidden></div>
+  <div class="botrow"><div id="prompt" hidden><kbd>E</kbd><span></span></div></div>
+  <div class="dpad" id="dpad" hidden aria-label="Yön tuşları">
+    <button class="up" data-d="f" aria-label="İleri"><svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="#2a211b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="lf" data-d="l" aria-label="Sola dön"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6a8 8 0 1 1-3 9M9 6H4M9 6V1" stroke="#2a211b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 3)"/></svg></button>
+    <button class="run" data-d="run" aria-pressed="false">Koş</button>
+    <button class="rt" data-d="r" aria-label="Sağa dön"><svg viewBox="0 0 24 24" fill="none"><path d="M15 6a8 8 0 1 0 3 9M15 6h5M15 6V1" stroke="#2a211b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 3)"/></svg></button>
+    <button class="dn" data-d="b" aria-label="Geri"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="#2a211b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <div class="tbtns" id="tbtns" hidden>
+    <button class="tbtn" id="t-jump" aria-label="Zıpla">Zıpla</button>
+    <button class="tbtn act" id="t-act" hidden></button>
+  </div>
+</div>
+<div id="joy" hidden><i></i></div>
+<div class="dlgwrap pad" id="dlgwrap" hidden><div id="dlg" role="dialog" aria-live="polite"><p class="who"></p><div class="tension" hidden><span>Gerginlik</span><span class="bar"><i></i></span></div><p class="say"></p><div class="opts"></div></div></div>
+<div class="cardwrap pad" id="cardwrap" hidden><div id="card" role="dialog" aria-modal="true" aria-labelledby="card-h"><p class="eb"></p><h2 id="card-h"></h2><p class="t"></p><div class="chips"></div><button class="go" id="card-go">Devam</button></div></div>
+
+<div class="ov" id="book" hidden><div class="sheet" role="dialog" aria-labelledby="book-h"><header><div><h2 id="book-h">Mekke Defteri</h2><div class="meta" id="book-meta"></div></div><button class="x" data-close aria-label="Kapat">×</button></header><div class="book"><div class="list" id="book-list"></div><div class="detail" id="book-detail"></div></div></div></div>
+<div class="ov" id="map" hidden><div class="sheet" style="height:100%" role="dialog" aria-labelledby="map-h"><header><div><h2 id="map-h">Batn-ı Mekke</h2><div class="meta">Keşfettiğin yerler isimleriyle görünür</div></div><button class="x" data-close aria-label="Kapat">×</button></header><div class="mapbox"><canvas id="mapc"></canvas><div class="legend"><span><b style="background:#d39a2c"></b>Görev</span><span><b style="background:#1f6f78"></b>Sen</span><span><b style="background:#b5523b"></b>Tanınan ev</span><span><b style="background:#6a5a4c"></b>Ev</span></div></div></div></div>
+
+<div id="title">
+  <div class="tbox">
+    <p class="over">Mekke · yaklaşık 605</p>
+    <h1>Kâbe Ustaları</h1>
+    <p class="sub">Kâbe'nin İnşası</p>
+    <div class="panel" id="p-controls" hidden></div>
+    <div class="panel" id="p-about" hidden><p style="margin:0 0 6px">Kış seli Kâbe'nin duvarlarını çatlatır. Kureyş onu yeniden yapmaya karar verir ve inşaata yalnızca helal kazancın girmesini şart koşar. Sen isimsiz, kurgusal bir Mekkeli gençsin: iyilik yaparak helal malzeme kazan, şehri tanı, Kâbe'nin yükselişine katıl.</p><p style="margin:0">Efendimiz (s.a.v.) ve ashâbı tasvir edilmez; onlarla ilgili olaylar yalnızca anlatılır. Ev konumları ve ölçüler kaynaklara dayanan yaklaşık temsillerdir.</p></div>
+    <div class="btns"><button class="go" id="m-start">Başla</button><button class="go alt" id="m-new" hidden>Yeni oyun</button><button class="go alt" id="m-controls">Kontroller</button><button class="go alt" id="m-about">Hakkında</button><button class="go alt" id="m-sound">Ses: Açık</button><button class="go alt" id="m-style">Görünüm: Canlı</button><button class="go alt" id="m-dpad">Yön tuşları: Kapalı</button><button class="go alt" id="m-lang" lang="en">English</button></div>
+    <p class="note">Efendimiz (s.a.v.) ve ashâbı tasvir edilmez. Tarihî bilgiler TDV İslâm Ansiklopedisi ve siyer kaynaklarına dayanır.</p>
+  </div>
+</div>
+<div class="cine t"></div><div class="cine b"></div><div id="subt"></div>
+<div id="fade"></div>

@@ -1,0 +1,668 @@
+--- l9.pre2.js	2026-11-07 17:06:12.681851153 -0500
++++ l9.js	2026-11-07 17:59:03.557323946 -0500
+@@ -142,32 +142,38 @@
+ function makeUpgradeWorkers(){for(const u of UPG)if(D.up[u.id]&&u.mk&&!workersMade[u.id]){workersMade[u.id]=1;u.mk();}}
+ /* ---------- per-frame site logic ---------- */
+ function inZ(z){return z.mesh.visible&&Math.hypot(P.x-z.x,P.z-z.z)<z.r&&!P.ride;}
++let padNear=null;
+ let tick=0,currentTargetZone=null,unload={z:null,n:0,t:0};
+ const hooks={};// chapter-specific logic installed by l11
++function gameActive(){return state==='play'&&bookEl.hidden&&mapEl.hidden&&(typeof KS==='undefined'||KS.hidden)&&!document.hidden&&!(typeof PADUI!=='undefined'&&PADUI.open);}
++/* one ledger for bereket: profile and the running chapter move together (T11) */
++function award(n){n=Math.max(0,Math.round(n));D.coins+=n;R.coins=(R.coins||0)+n;runDirty=true;}
++let runDirty=false;
++function unloadBonus(){if(!unload.z)return;const cap=unload.cap||D.cap;if(unload.n>=4&&unload.n>=cap){const b=unload.n*2;award(b);ftext(L2('TAM YÜK! +','FULL LOAD! +')+b,P.x,P.y+2.4,P.z,'#ffd75e');coinsFly(3,P.x,P.y+1.5,P.z);}unload.z=null;}
+ function zoneOn(z){return z.chs.includes(R.ch)&&(!z.when||z.when());}
+-function bumpUnload(z,n){if(unload.z!==z){unload={z,n:0,t:0};}unload.n+=n;unload.t=0;}
++function bumpUnload(z,n){if(unload.z!==z){unloadBonus();unload={z,n:0,t:0,cap:hooks.cap?hooks.cap():D.cap};}unload.n+=n;unload.t=0;runDirty=true;}
+ function siteStep(dt){if(!SITE.on||!started)return;
+   for(const z of ZONES){const v=zoneOn(z);z.mesh.visible=v;if(z.pileG)z.pileG.visible=v||(z.id==='dump'&&R.ch<=2);z.mesh.material.opacity=currentTargetZone===z?.8+Math.sin(clock*5)*.2:.78;}
+   for(const p of PADS)p.mesh.material.opacity=.75+Math.sin(clock*4)*.2;
+-  const playing=state==='play'&&!R.done;if(playing)R.t+=dt;tick-=dt;const beat=tick<=0;if(beat)tick=.11;
++  const sim=gameActive(),sdt=sim?dt:0;const playing=sim&&!R.done;if(playing)R.t+=dt;tick-=sdt;const beat=sim&&tick<=0;if(beat)tick=.11;
+   // full-load bonus: after the player leaves an unload zone
+-  if(unload.z){unload.t+=dt;if(unload.t>.5){if(unload.n>=4&&unload.n>=D.cap){const b=unload.n*2;D.coins+=b;ftext(L2('TAM YÜK! +','FULL LOAD! +')+b,P.x,P.y+2.4,P.z,'#ffd75e');coinsFly(3,P.x,P.y+1.5,P.z);}unload.z=null;}}
++  if(unload.z&&sim){unload.t+=dt;if(unload.t>.5)unloadBonus();}
+   // deliveries arrive by camel
+-  if(Z.raw.mesh.visible){Z.raw.t+=dt;Z.raw.camel.g.visible=true;if(Z.raw.t>4.5){Z.raw.t=0;if(Z.raw.count<Z.raw.max){Z.raw.count=Math.min(Z.raw.max,Z.raw.count+4);pileVis(Z.raw);if(Math.hypot(P.x-Z.raw.x,P.z-Z.raw.z)<25)sfx.camel();}}}else Z.raw.camel.g.visible=false;
+-  if(Z.rawWood.mesh.visible){Z.rawWood.t+=dt;Z.rawWood.camel.g.visible=true;if(Z.rawWood.t>5){Z.rawWood.t=0;if(Z.rawWood.count<Z.rawWood.max){Z.rawWood.count=Math.min(Z.rawWood.max,Z.rawWood.count+3);pileVis(Z.rawWood);}}}else Z.rawWood.camel.g.visible=false;
++  if(Z.raw.mesh.visible){Z.raw.t+=sdt;Z.raw.camel.g.visible=true;if(Z.raw.t>4.5){Z.raw.t=0;if(Z.raw.count<Z.raw.max){Z.raw.count=Math.min(Z.raw.max,Z.raw.count+4);pileVis(Z.raw);if(Math.hypot(P.x-Z.raw.x,P.z-Z.raw.z)<25)sfx.camel();}}}else Z.raw.camel.g.visible=false;
++  if(Z.rawWood.mesh.visible){Z.rawWood.t+=sdt;Z.rawWood.camel.g.visible=true;if(Z.rawWood.t>5){Z.rawWood.t=0;if(Z.rawWood.count<Z.rawWood.max){Z.rawWood.count=Math.min(Z.rawWood.max,Z.rawWood.count+3);pileVis(Z.rawWood);}}}else Z.rawWood.camel.g.visible=false;
+   // workshops
+-  const morale=R.water>0?1.5:1;if(R.water>0)R.water-=dt;
+-  for(const c of cutter){const on=Z.cutIn.mesh.visible;c.g.visible=R.ch>=3&&R.ch!==4;if(!on){animPerson(c,dt,0,'idle');continue;}c.t+=dt*morale;const busy=Z.cutIn.count>0&&Z.cutOut.count<Z.cutOut.max;animPerson(c,dt,0,busy?'talk':'idle');faceW(c,Z.cutIn);
++  const morale=R.water>0?1.5:1;if(R.water>0)R.water-=sdt;
++  for(const c of cutter){const on=Z.cutIn.mesh.visible;c.g.visible=R.ch>=3&&R.ch!==4;if(!on){animPerson(c,dt,0,'idle');continue;}c.t+=sdt*morale;const busy=Z.cutIn.count>0&&Z.cutOut.count<Z.cutOut.max;animPerson(c,dt,0,busy?'talk':'idle');faceW(c,Z.cutIn);
+     if(c.t>1.5){c.t=0;if(busy){Z.cutIn.count--;Z.cutOut.count++;pileVis(Z.cutIn);pileVis(Z.cutOut);if(Math.hypot(P.x-c.x,P.z-c.z)<18)nz(.08,2600,4,.05,'bandpass');puff(c.x,c.y+.8,c.z,2);}}}
+   carp.g.visible=R.ch>=5;
+-  if(Z.carIn.mesh.visible){carp.t+=dt*morale;const busy=Z.carIn.count>0&&Z.carOut.count<Z.carOut.max;animPerson(carp,dt,0,busy?'talk':'idle');faceW(carp,Z.carIn);if(carp.t>1.6){carp.t=0;if(busy){Z.carIn.count--;Z.carOut.count++;pileVis(Z.carIn);pileVis(Z.carOut);if(Math.hypot(P.x-carp.x,P.z-carp.z)<18)nz(.12,1400,2,.04,'bandpass');}}}
++  if(Z.carIn.mesh.visible){carp.t+=sdt*morale;const busy=Z.carIn.count>0&&Z.carOut.count<Z.carOut.max;animPerson(carp,dt,0,busy?'talk':'idle');faceW(carp,Z.carIn);if(carp.t>1.6){carp.t=0;if(busy){Z.carIn.count--;Z.carOut.count++;pileVis(Z.carIn);pileVis(Z.carOut);if(Math.hypot(P.x-carp.x,P.z-carp.z)<18)nz(.12,1400,2,.04,'bandpass');}}}
+   else animPerson(carp,dt,0,'idle');
+   // porters
+   for(const w of porters){const src=w.job==='porter'?Z.raw:Z.rawWood,dst=w.job==='porter'?Z.cutIn:Z.carIn;w.g.visible=src.mesh.visible;if(!w.g.visible)continue;const t=w.carry.length?dst:src;const dx=t.x-w.x,dz=t.z-w.z,d=Math.hypot(dx,dz);let sp=0;
+-    if(d>1.2){const v=2.8;w.x+=dx/d*v*dt;w.z+=dz/d*v*dt;w.face=Math.atan2(dx,dz);sp=v;collideEnt(w,.3,0);}
++    if(d>1.2&&sim){const v=2.8;w.x+=dx/d*v*dt;w.z+=dz/d*v*dt;w.face=Math.atan2(dx,dz);sp=v;collideEnt(w,.3,0);}
+     else if(beat){if(w.carry.length&&dst.count<dst.max){w.carry.pop();dst.count++;pileVis(dst);}else if(!w.carry.length&&src.count>=3){src.count-=3;w.carry=[1,1,1];pileVis(src);}}
+     w.y=height(w.x,w.z);w.g.position.set(w.x,w.y,w.z);w.g.rotation.y=w.face;animPerson(w,dt,sp,w.carry.length?'carry':sp?'walk':'idle');}
+-  if(hooks.step)hooks.step(dt,playing,beat);
++  if(hooks.step)hooks.step(sdt,playing,beat);
+   // puddles
+   let slow=D.up.fast?1.22:1;for(const p of puddles){p.m.visible=R.ch===6;if(p.m.visible&&Math.hypot(P.x-p.x,P.z-p.z)<p.r){slow*=.55;if(beat&&P.speed>1&&Math.random()<.3)sfx.splash();}}P.slow=slow;
+   if(!playing){stackVis();return;}
+@@ -177,12 +183,27 @@
+     if(inZ(Z.raw))take(Z.raw,'raw');if(inZ(Z.cutIn))give(Z.cutIn,'raw');if(inZ(Z.cutOut))take(Z.cutOut,'block');
+     if(inZ(Z.rawWood))take(Z.rawWood,'rawwood');if(inZ(Z.carIn))give(Z.carIn,'rawwood');if(inZ(Z.carOut))take(Z.carOut,'beam');
+     if(hooks.beat)hooks.beat(top,cap,take,give);
+-    for(const p of PADS){const d=Math.hypot(P.x-p.u.x,P.z-p.u.z);if(d<1.6&&D.coins>0){const amt=Math.min(D.coins,Math.max(1,Math.ceil(p.u.cost/14)),p.u.cost-p.paid);D.coins-=amt;p.paid+=amt;D.up['p_'+p.u.id]=p.paid;tone(HIC[7],.05,.02);
+-        if(p.paid>=p.u.cost){D.up[p.u.id]=true;if(p.u.apply)p.u.apply();makeUpgradeWorkers();sfx.build();sparkle(p.u.x,1,p.u.z,30);ftext('✓ '+p.u.label,p.u.x,2,p.u.z,'#ffd75e');scene.remove(p.mesh);PADS.splice(PADS.indexOf(p),1);ssave();syncPads();break;}}}
++    padNear=null;for(const p of PADS){if(Math.hypot(P.x-p.u.x,P.z-p.u.z)<1.6){padNear=p;break;}}
+   }
+   stackVis();sway+=dt*(P.speed>.5?9:2);stackG.rotation.z=Math.sin(sway)*.04*Math.min(1,stack.length/3);stackG.rotation.x=Math.sin(sway*.5)*.03;
+   if(stack.length){hero.armL.rotation.x=hero.armR.rotation.x=-1.25;}
+ }
+ function faceW(w,z){w.face=Math.atan2(z.x-w.x,z.z-w.z);w.g.rotation.y=w.face;}
+-function ssave(){try{localStorage.setItem(SKEY,JSON.stringify(D));}catch(_){}}
+-function sload(){try{const s=JSON.parse(localStorage.getItem(SKEY)||'null');if(s){D=Object.assign(D,s);return true;}}catch(_){}return false;}
++const SAVE_VER=2;
++function ssave(){try{D.ver=SAVE_VER;D.codex=Object.keys(G.found||{});const j=JSON.stringify(D);localStorage.setItem(SKEY,j);localStorage.setItem(SKEY+'-bak',j);runDirty=false;return true;}catch(e){console.warn('save failed',e);saveFailed=true;return false;}}
++let saveFailed=false;
++const num=(v,d,lo,hi)=>{v=Number(v);if(!isFinite(v))return d;return Math.min(hi,Math.max(lo,v));};
++function cleanProfile(s){const o={unl:1,stars:{},best:{},coins:0,good:0,cap:4,up:{},tut:0,last:1,codex:[],run:null,meta:null,ver:SAVE_VER};if(!s||typeof s!=='object')return o;
++  o.unl=Math.round(num(s.unl,1,1,7));o.coins=Math.round(num(s.coins,0,0,1e7));o.good=Math.round(num(s.good,0,0,1e7));o.cap=Math.round(num(s.cap,4,4,20));o.tut=s.tut?1:0;o.done=!!s.done;o.rm=!!s.rm;o.novib=!!s.novib;
++  if(s.stars&&typeof s.stars==='object')for(let i=1;i<=7;i++){const v=Math.round(num(s.stars[i],0,0,3));if(v)o.stars[i]=v;}
++  if(s.best&&typeof s.best==='object')for(let i=1;i<=7;i++){const v=num(s.best[i],0,0,1e6);if(v)o.best[i]=Math.round(v);}
++  for(let i=1;i<=7;i++)if(o.stars[i])o.unl=Math.max(o.unl,Math.min(7,i+1));
++  const ids=new Set(UPG.map(u=>u.id));if(s.up&&typeof s.up==='object')for(const k in s.up){const m=/^p_(.+)$/.exec(k);if(m){if(ids.has(m[1]))o.up[k]=Math.round(num(s.up[k],0,0,1e6));}else if(ids.has(k)&&s.up[k])o.up[k]=true;}
++  // capacity is derived from purchased upgrades, so a damaged number can not give infinite carry
++  o.cap=4+(o.up.cap1?2:0)+(o.up.cap2?2:0);
++  if(Array.isArray(s.codex))o.codex=s.codex.filter(x=>typeof x==='string'&&CX[x]);
++  if(s.run&&typeof s.run==='object'&&s.run.ch>=1&&s.run.ch<=8&&s.run.ch<=Math.max(o.unl,o.done?8:0))o.run=s.run;
++  if(s.meta&&typeof s.meta==='object')o.meta=s.meta;
++  return o;}
++function sload(){let s=null,src='none';for(const k of [SKEY,SKEY+'-bak']){try{const t=localStorage.getItem(k);if(t){s=JSON.parse(t);src=k;break;}}catch(_){s=null;}}
++  D=cleanProfile(s);for(const id of D.codex)G.found[id]=true;return src!=='none';}
+--- l10.pre2.js	2026-11-07 17:06:12.683665310 -0500
++++ l10.js	2026-11-07 17:15:43.487818312 -0500
+@@ -2,7 +2,11 @@
+ const KV=(x,y,z)=>new V3(x,y,z);
+ const KL=(lx,y,lz)=>{const p=kW(lx,lz);return new V3(p.x,y,p.z);};
+ const tmpObjs=[];function keep(o){scene.add(o);tmpObjs.push(o);return o;}
+-function clearTmp(){tmpObjs.forEach(o=>scene.remove(o));tmpObjs.length=0;}
++const SHARED_MATS=new Set();function isSharedMat(m){if(SHARED_MATS.size===0){Object.values(mat).forEach(x=>SHARED_MATS.add(x));if(typeof PERSON_MAT!=='undefined')SHARED_MATS.add(PERSON_MAT);if(typeof fabricTex!=='undefined')SHARED_MATS.add(fabricTex);}return SHARED_MATS.has(m)||(m&&(m===blockMat||m===jugMat||(m.userData&&m.userData.shared)));}
++const SHARED_GEO=new Set([blockGeo,beamGeo,jugGeo,mudGeo]);
++function disposeObj(o){o.traverse(m=>{if(!m.isMesh&&!m.isPoints)return;if(m.geometry&&!SHARED_GEO.has(m.geometry)&&!(m.geometry.userData&&m.geometry.userData.shared))m.geometry.dispose();
++  const ms=Array.isArray(m.material)?m.material:[m.material];for(const x of ms){if(!x||isSharedMat(x))continue;if(x.map&&!isSharedMat(x.map)&&x.map!==fabricTex)x.map.dispose();x.dispose();}});}
++function clearTmp(){tmpObjs.forEach(o=>{scene.remove(o);disposeObj(o);});tmpObjs.length=0;}
+ function crowdAt(list,look){return list.map(([x,z,o])=>{const p=makePerson(o||{});const s=freeSpot(x,z,.3);p.g.position.set(s.x,height(s.x,s.z),s.z);if(look)p.g.rotation.y=Math.atan2(look.x-s.x,look.z-s.z);keep(p.g);p.x=s.x;p.z=s.z;return p;});}
+ function pickaxe(p){const t=new THREE.Group();const h=new THREE.Mesh(new THREE.CylinderGeometry(.025,.03,.85,6),mat.wood);h.rotation.x=Math.PI/2;h.position.z=.25;t.add(h);
+   const hd=new THREE.Mesh(new THREE.BoxGeometry(.5,.07,.07),Lm(0x55524e));hd.position.z=.66;t.add(hd);t.position.set(0,-.58,.04);p.armR.add(t);return t;}
+@@ -132,13 +136,14 @@
+     {d:4,from:{p:KV(24,5,-18),l:KV(18,1.2,-13)},to:{p:KV(22,3.4,-17),l:KV(18,1.2,-13.5)},bubbles:[{who:L2('Ustabaşı','Master builder'),t:L2('Ham taşı taşçıya getir; o düzgün keser. Kesme taşı da duvara taşı. Taşıdıkça Kâbe yükselir!','Bring raw stone to the stonecutter; he shapes it. Then carry the cut stone to the wall. Every load raises the Kaaba!'),at:'tl'}]}],
+   ()=>{clearTmp();if(done)done();});}
+ /* ---------- Chapter 4: the blood oath (night), then the arbiter at dawn ---------- */
+-let F4=[];
+-function makeClanFires(){F4.forEach(f=>{f.f.g.visible=false;f.men.forEach(m=>scene.remove(m.g));});F4=[];
+-  const spots=[[-KW/2-8,-3,0x8a3a2c,L2('Abdüddâr','Abd al-Dar')],[KW/2+8,2,0x2f5d8a,L2('Mahzûm','Makhzum')],[2,KD/2+8,0x4d6b3a,L2('Abdümenâf','Abd Manaf')],[-3,-KD/2-9,0x6b4a7a,L2('Adî','Adi')]];
+-  for(const [lx,lz,c,n] of spots){const p=kW(lx,lz);const s=freeSpot(p.x,p.z,1.4);const f=addFire(s.x,s.z);f.g.visible=true;
+-    const men=[0,1,2].map(i=>{const a=i*2.1+.5;const m=makePerson({robe:c,beard:0x2a221c,hat:'turban'});m.g.position.set(s.x+Math.cos(a)*1.5,height(s.x,s.z),s.z+Math.sin(a)*1.5);m.g.rotation.y=Math.atan2(s.x-m.g.position.x,s.z-m.g.position.z);scene.add(m.g);return m;});
+-    F4.push({f,men,x:s.x,z:s.z,name:n,anger:20,rate:0});}
+-  return F4;}
++let F4=[],FIRE_POOL=null;
++function makeClanFires(){
++  if(!FIRE_POOL){FIRE_POOL=[];const spots=[[-KW/2-8,-3,0x8a3a2c,L2('Abdüddâr','Abd al-Dar')],[KW/2+8,2,0x2f5d8a,L2('Mahzûm','Makhzum')],[2,KD/2+8,0x4d6b3a,L2('Abdümenâf','Abd Manaf')],[-3,-KD/2-9,0x6b4a7a,L2('Adî','Adi')]];
++    for(const [lx,lz,c,n] of spots){const p=kW(lx,lz);const s=freeSpot(p.x,p.z,1.4);const f=addFire(s.x,s.z);
++      const men=[0,1,2].map(i=>{const a=i*2.1+.5;const m=makePerson({robe:c,beard:0x2a221c,hat:'turban'});m.g.position.set(s.x+Math.cos(a)*1.5,height(s.x,s.z),s.z+Math.sin(a)*1.5);m.g.rotation.y=Math.atan2(s.x-m.g.position.x,s.z-m.g.position.z);scene.add(m.g);return m;});
++      FIRE_POOL.push({f,men,x:s.x,z:s.z,name:n,anger:20});}}
++  F4=FIRE_POOL;F4.forEach(f=>{f.f.g.visible=true;f.men.forEach(m=>m.g.visible=true);f.anger=20;});return F4;}
++function hideClanFires(){if(FIRE_POOL)FIRE_POOL.forEach(f=>{f.f.g.visible=false;f.men.forEach(m=>m.g.visible=false);});F4=[];}
+ function clipOath(done){setTime('night');RAIN.target=0;kaaba({old:false,rubble:false,green:false,scaffold:true,wallH:1.6,stone:false});makeClanFires();const f0=F4[0];
+   const bowl=keep(new THREE.Mesh(new THREE.CylinderGeometry(.35,.2,.25,14),mat.clay));bowl.position.set(f0.x+.8,height(f0.x,f0.z)+.12,f0.z);
+   const blood=new THREE.Mesh(new THREE.CircleGeometry(.3,16),new THREE.MeshBasicMaterial({color:0x6a0a10}));blood.rotation.x=-Math.PI/2;blood.position.y=.13;bowl.add(blood);
+@@ -151,7 +156,7 @@
+ function clipArbiter(done){setTime('dawn');
+   anime([{d:3.8,from:{p:KV(18,6,-16),l:KV(0,2,0)},to:{p:KV(14,4,-12),l:KV(0,2,0)},bubbles:[{who:L2('Ebû Ümeyye b. Muğîre','Abu Umayya ibn al-Mughira'),t:L2('Ey Kureyş! Şu kapıdan ilk kim girerse, aranızda o hakem olsun!','O Quraysh! Let whoever enters first through that gate be the judge between you!'),at:'tl'}],upd:()=>F4.forEach(f=>f.men.forEach(m=>animPerson(m,.016,0,'idle')))},
+     {d:4.2,from:{p:KV(-14,4,18),l:KV(0,1.5,0)},to:{p:KV(-10,3,13),l:KV(0,1.5,0)},flash:'#fff6d8',bubbles:[{nar:true,t:L2('Kapıdan ilk giren, herkesin "el-Emîn", yani "güvenilir" dediği gençti. Hepsi sevindi: "Ona razıyız!"','The first to enter was the young man everyone called "al-Amin", the trustworthy. They all rejoiced: "We accept him!"')}],upd:()=>F4.forEach(f=>f.men.forEach(m=>animPerson(m,.016,0,'cheer')))}
+-  ],()=>{F4.forEach(f=>{f.f.g.visible=false;f.men.forEach(m=>scene.remove(m.g));});F4=[];stoneLite(done);});}
++  ],()=>{hideClanFires();stoneLite(done);});}
+ function stoneLite(done){const out=KV(BSW.x,0,BSW.z).normalize(),cp=KV(BSW.x+out.x*2.6,0,BSW.z+out.z*2.6);cp.y=height(cp.x,cp.z);
+   const cg=keep(new THREE.Group());cg.position.copy(cp);const cloth=new THREE.Mesh(new THREE.PlaneGeometry(2.2,2.2),new THREE.MeshLambertMaterial({map:fabricTex,side:THREE.DoubleSide}));cloth.rotation.x=-Math.PI/2;cloth.position.y=.05;cg.add(cloth);
+   const stone=new THREE.Mesh(new THREE.SphereGeometry(.22,14,10),new THREE.MeshPhongMaterial({color:0x151312,shininess:70}));stone.scale.set(.95,1.15,.7);stone.position.y=.22;cg.add(stone);
+--- l11.pre2.js	2026-11-07 17:06:12.685420297 -0500
++++ l11.js	2026-11-07 17:06:59.229214588 -0500
+@@ -129,10 +129,10 @@
+   else{const co=[0,0,0,0,1,1,3,5][Math.min(u,7)];kaaba({old:false,rubble:false,green:u===3,scaffold:u<=7&&!(D.stars[7]),wallH:D.stars[7]?8.7:wallAt(co,0),stone:u>=5,roof:!!D.stars[7],door:!!D.stars[7],hijr:!!D.stars[7]});}
+   RAIN.target=0;flood.visible=false;setTime(D.stars[7]?'eve':'asr');resetOld();}
+ function showStory(n){const c=CH[n];sheet(`<span class="ic">${c.icon}</span><p class="eb">${L2('Bölüm','Chapter')} ${n} / ${NCH}</p><h2>${c.name}</h2><p>${c.story}</p><div class="task"><span>🎯</span><span>${c.task}</span></div>
+-  <div class="kbtns"><button class="kbtn alt" id="ks-x">${L2('Geri','Back')}</button><button class="kbtn" id="ks-go">${L2('Başla','Start')}</button></div>`,c2=>{c2.querySelector('#ks-x').onclick=closeSheet;c2.querySelector('#ks-go').onclick=()=>{closeSheet();startChapter(n);};});}
++  <div class="kbtns"><button class="kbtn alt" id="ks-x">${L2('Geri','Back')}</button><button class="kbtn" id="ks-go">${L2('Başla','Start')}</button></div>`,c2=>{c2.querySelector('#ks-x').onclick=()=>{closeSheet();if(KM.hidden&&KT.hidden)showMap();};c2.querySelector('#ks-go').onclick=()=>{closeSheet();startChapter(n);};});}
+ /* ---------- chapter setup ---------- */
+ function resetOld(){KP.old.scale.y=1;KP.old.position.y=0;KP.oldDoor.visible=KSTATE.old;}
+-function cleanupChapter(){stack=[];stackVis();families.forEach(f=>f.p.g.visible=false);F4.forEach(f=>{f.f.g.visible=false;f.men.forEach(m=>scene.remove(m.g));});F4=[];abars.forEach(a=>a.remove());abars=[];TIMER.hidden=true;resetOld();hooks.step=hooks.beat=hooks.cap=null;R.done=true;clearTmp();}
++function cleanupChapter(){unload.z=null;stack=[];stackVis();families.forEach(f=>f.p.g.visible=false);hideClanFires();abars.forEach(a=>a.remove());abars=[];TIMER.hidden=true;resetOld();hooks.step=hooks.beat=hooks.cap=null;R.done=true;clearTmp();}
+ function coinIcon(){const w=$('#r-wood svg');if(w&&!w.dataset.c){w.dataset.c=1;w.innerHTML='<circle cx="12" cy="12" r="8.5" fill="#e3a51f" stroke="#a8741a" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="#fff1b8" stroke-width="1.6"/>';$('#r-wood').title=L2('Bereket','Bereket');}}
+ function startChapter(n){auInit();coinIcon();musicStart();cleanupChapter();KM.hidden=true;KT.hidden=true;titleEl.hidden=true;SITE.on=true;started=true;build();makeUpgradeWorkers();
+   setupCh(n);hud.style.opacity=0;const c=CH[n];
+@@ -155,11 +155,11 @@
+ /* ---------- chapter 1: mud ---------- */
+ function ch1Beat(top,cap){for(const f of families){const z=f.z;if(inZ(z)&&z.count>0&&stack.length<cap&&(!stack.length||stack[0]==='mud')){z.count--;stack.push('mud');pileVis(z,'mud');sfx.dig();
+       if(z.count===0&&!f.happy){f.happy=true;D.good++;R.good++;pop('r-good');sfx.good();sparkle(f.p.g.position.x,2,f.p.g.position.z,24);ftext(L2('Allah razı olsun!','God bless you!'),f.p.g.position.x,2.4,f.p.g.position.z,'#ffe3a6');}}}
+-  if(inZ(Z.dump)&&top==='mud'){stack.pop();R.n++;Z.dump.count++;pileVis(Z.dump,'mud');sfx.thunk();D.coins+=2;R.coins+=2;bumpUnload(Z.dump,1);if(R.n===1)ftext('+2 🪙',Z.dump.x,2,Z.dump.z,'#ffd75e');if(R.n>=CH[1].goal)chapterDone();}}
++  if(inZ(Z.dump)&&top==='mud'){stack.pop();R.n++;Z.dump.count++;pileVis(Z.dump,'mud');sfx.thunk();award(2);bumpUnload(Z.dump,1);if(R.n===1)ftext('+2 🪙',Z.dump.x,2,Z.dump.z,'#ffd75e');if(R.n>=CH[1].goal)chapterDone();}}
+ function famStep(dt){families.forEach(f=>animPerson(f.p,dt,0,f.happy?'cheer':'cry'));}
+ /* ---------- chapter 2: rubble ---------- */
+ function ch2Beat(top,cap){if(inZ(Z.rubble)&&R.n+stack.length<CH[2].goal&&stack.length<cap&&(!stack.length||stack[0]==='rubble')){stack.push('rubble');sfx.pick();}
+-  if(inZ(Z.dump)&&top==='rubble'){stack.pop();R.n++;Z.dump.count++;pileVis(Z.dump,'rubble');sfx.thunk();D.coins+=2;R.coins+=2;bumpUnload(Z.dump,1);
++  if(inZ(Z.dump)&&top==='rubble'){stack.pop();R.n++;Z.dump.count++;pileVis(Z.dump,'rubble');sfx.thunk();award(2);bumpUnload(Z.dump,1);
+     const s=1-R.n/CH[2].goal*.88;KP.old.scale.y=s;KP.oldDoor.visible=s>.6;if(R.n>=CH[2].goal)chapterDone();}}
+ /* ---------- chapter 4: calm the clans ---------- */
+ let abars=[];
+@@ -168,16 +168,19 @@
+   F4.forEach((f,i)=>{if(playing){const r=1.55+i*.18+.7*Math.sin(R.t*.35+i*1.7);f.anger=Math.min(100,f.anger+Math.max(.5,r)*dt);R.maxAnger=Math.max(R.maxAnger,f.anger);}
+     f.men.forEach(m=>animPerson(m,dt,0,f.anger>65?'angry':f.anger<35?'idle':'talk'));
+     const a=abars[i];if(a){const s=scr(f.x,3.1,f.z);a.style.display=s.ok&&state==='play'?'':'none';a.style.left=s.x+'px';a.style.top=s.y+'px';a.querySelector('i').style.width=f.anger+'%';a.classList.toggle('hot',f.anger>75);}
+-    if(playing&&f.anger>=100)fail4(f);});
+-  if(playing){const left=Math.max(0,T4-R.t);TIMER.textContent='🌙 '+L2('Şafağa ','Dawn in ')+Math.ceil(left)+L2(' sn',' s');if(left<=0){TIMER.hidden=true;chapterDone();}}}
++    });
++  if(!playing)return;const left=Math.max(0,T4-R.t);
++  if(left<=0){TIMER.hidden=true;chapterDone();return;}   // rule: when dawn and a full bar happen in the same frame, dawn wins
++  const hot=F4.find(f=>f.anger>=100);if(hot){fail4(hot);return;}
++  let w=F4[0];for(const f of F4)if(f.anger>w.anger)w=f;TIMER.textContent='🌙 '+L2('Şafağa ','Dawn in ')+Math.ceil(left)+L2(' sn',' s')+' · '+L2('En öfkeli: ','Angriest: ')+w.name+' %'+Math.round(w.anger);}
+ function ch4Beat(top,cap){if(inZ(Z.well)&&stack.length<cap&&(!stack.length||stack[0]==='water')){stack.push('water');sfx.pour();}
+   if(top==='water')for(const f of F4){if(Math.hypot(P.x-f.x,P.z-f.z)<3.2&&f.anger>8){stack.pop();const was=f.anger;f.anger=Math.max(0,f.anger-40);sfx.pour();sparkle(f.x,1.8,f.z,14);if(was>45){D.good++;R.good++;pop('r-good');}
+       const lines=[L2('Haklısın, bekleyelim.','You\'re right, let\'s wait.'),L2('Allah razı olsun evlat.','Bless you, child.'),L2('Tamam, sakinim.','Fine, I\'m calm.'),L2('Kan dökmeyelim.','Let\'s shed no blood.')];
+       ftext(lines[(Math.random()*lines.length)|0],f.x,2.8,f.z,'#bfe6ff');break;}}}
+-function fail4(f){if(R.done)return;R.done=true;stack=[];TIMER.hidden=true;anime([{d:2.6,from:{p:KV(f.x+5,3,f.z+5),l:KV(f.x,1,f.z)},to:{p:KV(f.x+3,2,f.z+3),l:KV(f.x,1.2,f.z)},impact:L2('KAVGA!','A FIGHT!'),shake:.6,tint:'rgba(140,10,10,.25)',sfx:()=>nz(.8,200,1,.4,'lowpass')}],()=>{state='ui';
++function fail4(f){if(R.done||R.ended)return;R.done=true;R.ended=true;D.run=null;ssave();stack=[];TIMER.hidden=true;anime([{d:2.6,from:{p:KV(f.x+5,3,f.z+5),l:KV(f.x,1,f.z)},to:{p:KV(f.x+3,2,f.z+3),l:KV(f.x,1.2,f.z)},impact:L2('KAVGA!','A FIGHT!'),shake:.6,tint:'rgba(140,10,10,.25)',sfx:()=>nz(.8,200,1,.4,'lowpass')}],()=>{state='ui';
+   sheet(`<span class="ic">🔥</span><p class="eb">${L2('Bölüm 4','Chapter 4')}</p><h2>${L2('Kavga çıktı!','A fight broke out!')}</h2><p>${L2(f.name+' kabilesinin öfkesi taştı. Ateşlerin başındaki çubukları izle; dolmak üzere olana önce su götür.','The '+f.name+' clan lost its temper. Watch the bars over the fires and bring water to the fullest one first.')}</p>
+     <div class="kbtns"><button class="kbtn alt" id="kf-map">${L2('Bölümler','Chapters')}</button><button class="kbtn" id="kf-re">${L2('Tekrar dene','Try again')}</button></div>`,c=>{c.querySelector('#kf-map').onclick=()=>{cleanupChapter();showMap();};c.querySelector('#kf-re').onclick=()=>{closeSheet();retry(4);};});});}
+-function retry(n){cleanupChapter();setupCh(n);afterIntro(n);state='play';hud.style.opacity=1;R.done=false;R.t=0;toast(CH[n].task,4);}
++function retry(n){cleanupChapter();D.run=null;setupCh(n);afterIntro(n);state='play';hud.style.opacity=1;R.done=false;R.t=0;toast(CH[n].task,4);}
+ /* ---------- course chapters (3,5,6,7) ---------- */
+ function courseStep(dt,playing){if(!playing||R.ch===3)return;R.thirstT+=dt;if(R.thirstT>40&&!R.thirsty&&R.water<=0){R.thirsty=true;toast(L2('Ustalar susadı! Zemzem\'den su götür: daha hızlı çalışırlar.','The craftsmen are thirsty! Bring Zamzam water: they will work faster.'),4.5);}
+   if(R.thirsty&&Math.random()<dt*.6){const c=cutter[0];ftext('💧?',c.x,2.6,c.z);}}
+@@ -186,22 +189,22 @@
+   if(R.thirsty&&top==='water'){for(const c of [...cutter,carp]){if(c.g.visible&&Math.hypot(P.x-c.x,P.z-c.z)<3){stack.pop();if(!stack.includes('water')){R.thirsty=false;R.thirstT=0;R.water=45;D.good+=2;R.good+=2;pop('r-good');sfx.good();sparkle(c.x,c.y+1.6,c.z,20);ftext(L2('+2 İYİLİK','+2 KINDNESS'),c.x,c.y+2.3,c.z,'#ffb3b3');queueSaying('su');}break;}}}
+   const c=COURSES[R.course];if(!c||!inZ(Z.wall))return;const need=c.t==='stone'?'block':'beam';
+   if(top&&top!==need&&(top==='block'||top==='beam')){stack.pop();R.bank[top]=(R.bank[top]||0)+1;sfx.thunk();if(!R.bankTip){R.bankTip=1;toast(L2('Fazla malzeme kenara kondu; sırası gelince kendiliğinden yerleşir.','Extra material set aside; it will be laid when its course comes.'),4);}return;}
+-  if(top===need||(R.bank[need]>0&&!stack.length)){if(top===need)stack.pop();else R.bank[need]--;R.inCourse++;const pay=need==='block'?5:7;D.coins+=pay;R.coins+=pay;ftext('+'+pay,Z.wall.x,2.2,Z.wall.z,'#ffd75e');coinsFly(1,Z.wall.x,1.2,Z.wall.z);bumpUnload(Z.wall,1);
++  if(top===need||(R.bank[need]>0&&!stack.length)){if(top===need)stack.pop();else R.bank[need]--;R.inCourse++;const pay=need==='block'?5:7;award(pay);ftext('+'+pay,Z.wall.x,2.2,Z.wall.z,'#ffd75e');coinsFly(1,Z.wall.x,1.2,Z.wall.z);bumpUnload(Z.wall,1);
+     kaaba({wallH:wallAt(R.course,R.inCourse)});sfx.thunk();puff(Z.wall.x,height(Z.wall.x,Z.wall.z),Z.wall.z,3);if(R.inCourse>=c.n)courseFinished();}}
+-function courseFinished(){const c=COURSES[R.course];R.course++;R.inCourse=0;D.coins+=15;R.coins+=15;sfx.good();sparkle(0,KP.wallH+1,0,50);ssave();
++function courseFinished(){const c=COURSES[R.course];R.course++;R.inCourse=0;award(15);sfx.good();sparkle(0,KP.wallH+1,0,50);ssave();
+   if(c.roof)discover('k_mizab',true);
+   if(R.course>=CH[R.ch].c1){chapterDone();return;}
+   const nx=COURSES[R.course];R.done=true;stack=[];
+   anime([{d:2.6,from:{p:KV(22,KP.wallH+4,-16),l:KV(0,KP.wallH*.6,0)},to:{p:KV(18,KP.wallH+7,-22),l:KV(0,KP.wallH*.7,0)},speed:.6,impact:L2('SIRA TAMAM!','COURSE DONE!'),
+     bubbles:[{who:L2('Ustabaşı','Master builder'),t:nx.roof?L2('Şimdi çatı kirişleri!','Now the roof beams!'):nx.door?L2('Son iş: yerden yüksek kapı! Kiriş getir.','Last job: the raised door! Bring beams.'):nx.t==='stone'?L2('Ahşap sıra bitti, şimdi taş!','Timber course done, now stone!'):L2('Taş sıra bitti, şimdi ahşap kiriş!','Stone course done, now timber beams!'),at:'bl'}]}],()=>{R.done=false;});}
+ /* ---------- chapter end ---------- */
+-function chapterDone(){if(R.ch===0)return;const n=R.ch,c=CH[n];R.done=true;stack=[];stackVis();
++function chapterDone(){if(R.ch===0||R.ended)return;R.ended=true;unloadBonus();const n=R.ch,c=CH[n];R.done=true;stack=[];stackVis();D.run=null;
+   let s;if(n===4)s=R.maxAnger<80?3:R.maxAnger<93?2:1;else s=R.t<=c.par?3:R.t<=c.par*1.6?2:1;
+   const first=!D.stars[n];D.stars[n]=Math.max(D.stars[n]||0,s);D.best[n]=Math.min(D.best[n]||1e9,Math.round(R.t));D.unl=Math.max(D.unl,Math.min(NCH,n+1));if(n===NCH)D.done=true;ssave();
+   abars.forEach(a=>a.remove());abars=[];TIMER.hidden=true;
+   const fin=()=>{hud.style.opacity=0;state='ui';showResult(n,s,first);};
+   setTimeout(()=>{sfx.build();if(c.outro){hud.style.opacity=0;c.outro(fin);}else fin();},500);}
+-function showResult(n,s,first){const c=CH[n],last=n===NCH;const m=Math.floor(R.t/60),sec=Math.round(R.t%60);
++function showResult(n,s,first){const c=CH[n],last=n===NCH;const tt=Math.round(R.t),m=Math.floor(tt/60),sec=tt%60;
+   sheet(`<p class="eb" style="text-align:center">${L2('Bölüm','Chapter')} ${n} · ${c.name}</p><h2 style="text-align:center">${last?L2('Kâbe tamamlandı!','The Kaaba is complete!'):L2('Bölüm tamamlandı!','Chapter complete!')}</h2>
+     <div class="kstars"><span>★</span><span>★</span><span>★</span></div>
+     <div class="kstats"><div>${m}:${String(sec).padStart(2,'0')}<small>${L2('Süre','Time')}</small></div><div>🪙 ${R.coins}<small>${L2('Bereket','Bereket')}</small></div><div>❤ ${R.good}<small>${L2('İyilik','Kindness')}</small></div></div>
+@@ -279,4 +282,4 @@
+ {const h=$('#title h1');if(h)h.textContent=NAME;}
+ window.startSite=()=>{$('#k-play')&&$('#k-play').click();};
+ window.__site={cineTo:i=>{let n=0;while(CINE&&CINE.i<i&&n++<30){const s=CINE.steps[CINE.i];CINE.t=s.d;stepCine(0);}},makeUpgradeWorkers,build,clips:{clipSnake,clipFlood,clipCouncil,clipFirstStrike,clipGreen,clipClans,clipOath,clipArbiter,clipShip,clipRain,clipRoof,clipFinale},setTimeNow:k=>{setTime(k);stepTime(5);applyTime();},cineFF:t=>{let n=Math.round(t/.05);while(n-->0&&CINE){clock+=.05;stepCine(.05);}},cineState:()=>CINE?{i:CINE.i,t:CINE.t,n:CINE.steps.length}:null,step:(n,dt)=>{for(let i=0;i<n;i++){clock+=dt;siteStep(dt);updateHud(dt);}},D:()=>D,R:()=>R,stack:()=>stack,Z:()=>Z,COURSES,CH,F4:()=>F4,setD:o=>Object.assign(D,o),setR:o=>Object.assign(R,o),chapterDone,courseFinished,startChapter,showMap,showStory,PADS,syncPads,skipClip,families:()=>families,give:(t,n)=>{for(let i=0;i<n;i++)stack.push(t);}};
+-})();
++
+--- /home/claude/asama1/kaynak/build.py	2026-11-07 15:30:57.902909104 -0500
++++ build.py	2026-11-07 17:19:20.310780175 -0500
+@@ -32,7 +32,7 @@
+ 
+ # ---------- 1. every input must be present before anything runs ----------
+ MODULES_I18N = ['l1.js', 'l2.js', 'l3.js', 'l5.js', 'l4.js', 'l6.js', 'l7.js']   # wrapped by i18n.py -> l*.t.js (generated)
+-MODULES_RAW = ['world.js', 'l0.js', 'l8.js', 'l9.js', 'l10.js', 'l11.js']
++MODULES_RAW = ['world.js', 'l0.js', 'l8.js', 'l9.js', 'l10.js', 'l11.js', 'l12.js', 'l13.js']   # l9 opens the site scope, l13 closes it
+ INPUTS = {
+     'head.html': 'page head: CSS and static DOM',
+     'i18n.py': 'wraps Turkish strings in l1-l7 with __t() (writes l*.t.js and strings.json, which are generated)',
+@@ -104,7 +104,7 @@
+ '''
+ 
+ head = rd('head.html')
+-body = rd('textures.js') + ''.join(rd(f) for f in ['world.js', 'l0.js'] + [m.replace('.js', '.t.js') for m in ['l1.js', 'l2.js', 'l3.js', 'l5.js', 'l4.js', 'l6.js', 'l7.js']] + ['l8.js', 'l9.js', 'l10.js', 'l11.js'])
++body = rd('textures.js') + ''.join(rd(f) for f in ['world.js', 'l0.js'] + [m.replace('.js', '.t.js') for m in ['l1.js', 'l2.js', 'l3.js', 'l5.js', 'l4.js', 'l6.js', 'l7.js']] + ['l8.js', 'l9.js', 'l10.js', 'l11.js', 'l12.js', 'l13.js'])
+ MAIN = '<script>\n(function(){\nif(typeof THREE==="undefined"){window.__engineMissing();return;}\n' + RT + body + '\n})();\n</script>\n'
+ 
+ # ---------- 4a. web build ----------
+--- /dev/null	2026-11-06 23:42:18.619151807 -0500
++++ l12.js	2026-11-07 17:43:59.392197724 -0500
+@@ -0,0 +1,216 @@
++/* ===================== l12: robustness + polish for the site game =====================
++   input reset, audio lifecycle, Android back, WebGL loss, resumable runs,
++   confirm-to-buy upgrades, inventory-first targeting, cached HUD, settings content,
++   reduced motion, haptics, flying items. Runs inside the l9-l13 scope. */
++const setT=(e,v)=>{if(e&&e.__v!==v){e.__v=v;e.textContent=v;}};
++const setW=(e,v)=>{if(e&&e.__w!==v){e.__w=v;e.style.width=v;}};
++/* ---------- reduced motion + vibration preferences ---------- */
++function RM(){return reduce||!!D.rm;}
++function applyRM(){document.body.classList.toggle('rm',RM());}
++{const st=document.createElement('style');st.textContent=`
++body.rm *,body.rm *::before,body.rm *::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
++body.rm .ftx{animation:none!important}
++@media (prefers-reduced-motion: reduce){.kcard,.knode.cur,#k-play{animation:none!important}}
++#kpad{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:30;width:min(320px,calc(100vw - 32px));background:#fff8ea;border-radius:18px;box-shadow:0 8px 28px rgba(40,25,10,.35);padding:12px 14px;display:grid;grid-template-columns:44px 1fr auto;gap:4px 10px;align-items:center;font:600 14px/1.3 var(--f-ui,system-ui);color:#3a2a1c}
++#kpad[hidden]{display:none}
++#kpad .i{font-size:30px;grid-row:span 2;text-align:center}
++#kpad b{font:800 16px var(--f-ui,system-ui)}
++#kpad small{grid-column:2;color:#6a5a4c;font-weight:600}
++#kpad button{grid-row:span 2;min-height:48px;min-width:84px;border:0;border-radius:999px;background:#d39a2c;color:#3a2408;font:800 16px var(--f-ui,system-ui);padding:0 14px}
++#kpad button:disabled{background:#d8cfc0;color:#7a6a5a}
++#kinfo{margin:12px 0 0;padding:12px 14px;background:#f3ead8;border-radius:12px;font:600 14px/1.45 var(--f-ui,system-ui);color:#3a2a1c;text-align:left}
++#kinfo dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px}#kinfo dt{font-weight:800}#kinfo dd{margin:0}
++#kinfo p{margin:0 0 8px}
++#kglost{position:fixed;inset:0;z-index:98;display:flex;align-items:center;justify-content:center;background:rgba(30,22,16,.92);color:#fff6e0;font:700 18px/1.5 var(--f-ui,system-ui);text-align:center;padding:24px}
++#kglost[hidden]{display:none}
++.knext{margin:12px 0 0;text-align:center;font:700 14px var(--f-ui,system-ui);color:#1f6f78}
++`;document.head.appendChild(st);}
++applyRM();
++let hapT=0;
++function hap(kind){if(D.novib)return;const now=performance.now();if(now-hapT<70)return;hapT=now;
++  try{const H=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Haptics;if(H){H.impact({style:kind==='heavy'?'MEDIUM':'LIGHT'});return;}}catch(_){}
++  try{if(navigator.vibrate)navigator.vibrate(kind==='heavy'?28:12);}catch(_){}}
++/* ---------- T15: one place that forgets every held input ---------- */
++function resetInput(){for(const k in keys)keys[k]=false;jumpQ=false;actQ=false;tJumpHeld=false;
++  joy.id=null;joy.x=joy.y=joy.mag=0;joyEl.hidden=true;knob.style.transform='';looks.clear();DP.f=0;DP.t=0;
++  document.querySelectorAll('#dpad .on,#dpad [data-on]').forEach(b=>{b.classList.remove('on');b.removeAttribute('data-on');});}
++addEventListener('blur',resetInput);
++addEventListener('pagehide',resetInput);
++cv.addEventListener('lostpointercapture',e=>endPtr(e));
++{const sh0=sheet;sheet=function(h,f){resetInput();sh0(h,f);extendSheet();};}
++{const an0=anime;anime=function(shots,done){resetInput();if(RM())shots=shots.map(s=>Object.assign({},s,{shake:0,speed:0,flash:null}));an0(shots,done);};}
++/* ---------- T16: audio follows the app lifecycle ---------- */
++function audioSuspend(){try{if(AU.ctx&&AU.ctx.state==='running')AU.ctx.suspend();}catch(_){}}
++function audioResume(){try{if(AU.ctx&&AU.ctx.state!=='running'&&AU.ctx.state!=='closed')AU.ctx.resume();}catch(_){}}
++['pointerdown','keydown','touchend'].forEach(ev=>addEventListener(ev,()=>{if(!document.hidden)audioResume();},{capture:true,passive:true}));
++/* ---------- T06: resumable chapter runs ---------- */
++const ITEMS_OK=new Set(['mud','rubble','raw','block','rawwood','beam','water','dates','flour','bread']);
++function snapRun(){return {ch:R.ch,t:R.t,n:R.n,coins:R.coins,good:R.good,bank:Object.assign({},R.bank),water:R.water,thirstT:R.thirstT,thirsty:R.thirsty,maxAnger:R.maxAnger,
++  course:R.course,inCourse:R.inCourse,bankTip:R.bankTip||0,stack:stack.slice(),zones:ZONES.map(z=>z.count|0),fam:families.map(f=>[f.z.count|0,f.happy?1:0]),
++  fires:F4.map(f=>Math.round(f.anger*10)/10),px:+P.x.toFixed(2),pz:+P.z.toFixed(2),at:Date.now()};}
++function canSnap(){return SITE.on&&R.ch>=1&&R.ch<=NCH&&!R.done&&!R.ended&&state==='play';}
++let snapT=0;
++function saveRun(){if(!canSnap())return false;D.run=snapRun();return ssave();}
++function resumeRun(s){const n=s&&s.ch;if(!(n>=1&&n<=NCH)||n>D.unl){D.run=null;ssave();return false;}
++  auInit();coinIcon();musicStart();cleanupChapter();KM.hidden=true;KT.hidden=true;titleEl.hidden=true;closeSheet();SITE.on=true;started=true;build();makeUpgradeWorkers();
++  setupCh(n);afterIntro(n);const num=(v,d,lo,hi)=>{v=Number(v);return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};const c=CH[n];
++  R.t=num(s.t,0,0,36000);R.n=Math.round(num(s.n,0,0,c.goal||999));R.coins=Math.round(num(s.coins,0,0,1e6));R.good=Math.round(num(s.good,0,0,1e5));
++  R.water=num(s.water,0,0,60);R.thirstT=num(s.thirstT,0,0,600);R.thirsty=!!s.thirsty;R.maxAnger=num(s.maxAnger,0,0,100);R.bankTip=s.bankTip?1:0;
++  if(c.c0!=null){R.course=Math.round(num(s.course,c.c0,c.c0,c.c1-1));R.inCourse=Math.round(num(s.inCourse,0,0,COURSES[R.course].n-1));}
++  R.bank={};if(s.bank&&typeof s.bank==='object')for(const k of ['block','beam'])if(s.bank[k]>0)R.bank[k]=Math.round(num(s.bank[k],0,0,40));
++  if(Array.isArray(s.zones))ZONES.forEach((z,i)=>{if(s.zones[i]!=null){z.count=Math.round(num(s.zones[i],0,0,z.max||99));}});
++  if(Array.isArray(s.fam))families.forEach((f,i)=>{const v=s.fam[i];if(v){f.z.count=Math.round(num(v[0],0,0,8));f.happy=!!v[1];}});
++  for(const z of ZONES)if(z.pileG)pileVis(z,z===Z.dump?(n===1?'mud':'rubble'):families.some(f=>f.z===z)?'mud':undefined);
++  if(n===2){const sc=1-R.n/c.goal*.88;KP.old.scale.y=sc;KP.oldDoor.visible=sc>.6;}
++  if(c.c0!=null)kaaba({wallH:wallAt(R.course,R.inCourse)});
++  if(n===4&&Array.isArray(s.fires))F4.forEach((f,i)=>{f.anger=num(s.fires[i],20,0,99);});
++  const cap=hooks.cap?hooks.cap():D.cap;stack=(Array.isArray(s.stack)?s.stack:[]).filter(t=>ITEMS_OK.has(t)).slice(0,cap);stackVis();
++  if(isFinite(s.px)&&isFinite(s.pz))placeHero(s.px,s.pz);cam.yaw=Math.atan2(P.x,P.z);
++  state='play';hud.style.opacity=1;dpadApply();R.done=false;R.ended=false;
++  toast(L2('Kaldığın yerden devam ediyorsun','Picking up where you left off')+' · '+c.name,3.5);return true;}
++{const sc0=startChapter;startChapter=function(n){closeSheet();if(D.run){D.run=null;ssave();}sc0(n);};}
++{const ss0=showStory;showStory=function(n){const r=D.run;if(!r||r.ch!==n){ss0(n);return;}const c=CH[n];
++  const tt=Math.round(r.t||0);sheet(`<span class="ic">${c.icon}</span><p class="eb">${L2('Bölüm','Chapter')} ${n} / ${NCH}</p><h2>${c.name}</h2><p>${L2('Bu bölümü yarıda bırakmıştın.','You left this chapter unfinished.')} <b>${Math.floor(tt/60)}:${String(tt%60).padStart(2,'0')}</b></p>
++    <div class="kbtns"><button class="kbtn alt" id="kr-new">${L2('Baştan başla','Start over')}</button><button class="kbtn" id="kr-res">${L2('Devam et','Continue')}</button></div>`,c2=>{
++    c2.querySelector('#kr-res').onclick=()=>{if(!resumeRun(r)){closeSheet();showMap();}};
++    c2.querySelector('#kr-new').onclick=()=>{D.run=null;ssave();closeSheet();startChapter(n);};});};}
++{const kp=$('#k-play');if(kp){const p0=kp.onclick;kp.onclick=e=>{if(D.run&&D.run.ch>=1&&D.run.ch<=D.unl){auInit();musicStart();showStory(D.run.ch);}else p0(e);};}}
++function onHide(){resetInput();if(SITE.on&&state==='play'&&!R.done){unloadBonus();saveRun();}else if(runDirty)ssave();audioSuspend();
++  if(SITE.on&&state==='play'&&!R.done&&KS.hidden){const b=$('#b-menu');if(b)b.click();}}
++document.addEventListener('visibilitychange',()=>{if(document.hidden)onHide();else audioResume();});
++addEventListener('pagehide',onHide);
++/* ---------- T10: upgrades are bought on purpose ---------- */
++const PADSETS=[()=>PADS];
++const UPG_DESC={cap1:L2('Bir seferde 2 yük daha taşırsın.','Carry 2 more loads at once.'),cap2:L2('Bir seferde 2 yük daha taşırsın.','Carry 2 more loads at once.'),
++  cutter2:L2('İkinci taşçı: kesme taş iki kat hızlı çıkar.','A second cutter: cut stone comes twice as fast.'),porter1:L2('Ham taşı ocaktan taşçıya kendisi taşır.','Carries raw stone from the quarry to the cutter.'),
++  porter2:L2('Gemi tahtasını marangoza kendisi taşır.','Carries ship timber to the carpenter.'),fast:L2('Sandaletlerle daha hızlı yürürsün.','You walk faster in sandals.')};
++const PADUI={open:false,p:null};
++const padEl=el(`<div id="kpad" hidden role="dialog" aria-live="polite"><span class="i"></span><b></b><button type="button"></button><small></small></div>`);document.body.appendChild(padEl);
++function padRemain(p){return Math.max(0,p.u.cost-(p.paid||0));}
++function buyPad(p){const rem=padRemain(p);if(D.coins<rem)return false;D.coins-=rem;p.paid=p.u.cost;
++  if(p.buy)p.buy();else{const u=p.u;D.up[u.id]=true;delete D.up['p_'+u.id];if(u.apply)u.apply();makeUpgradeWorkers();scene.remove(p.mesh);const i=PADS.indexOf(p);if(i>=0)PADS.splice(i,1);syncPads();}
++  sfx.build();hap('heavy');sparkle(p.u.x,1,p.u.z,30);ftext('✓ '+p.u.label,p.u.x,2,p.u.z,'#ffd75e');pop('r-wood');ssave();return true;}
++function nearestPad(){let b=null,bd=1.9;for(const f of PADSETS)for(const p of f()){const d=Math.hypot(P.x-p.u.x,P.z-p.u.z);if(d<bd){bd=d;b=p;}}return b;}
++function stepPadUI(){const p=SITE.on&&state==='play'&&KS.hidden&&!R.done?nearestPad():null;
++  if(!p){if(!padEl.hidden)padEl.hidden=true;PADUI.p=null;return;}
++  const rem=padRemain(p),ok=D.coins>=rem;
++  if(PADUI.p!==p||padEl.__k!==ok+'|'+D.coins){PADUI.p=p;padEl.__k=ok+'|'+D.coins;
++    setT(padEl.querySelector('.i'),p.u.icon);setT(padEl.querySelector('b'),p.u.label);
++    setT(padEl.querySelector('small'),(p.u.desc||UPG_DESC[p.u.id]||'')+' '+(ok?'':L2(`(${rem-D.coins} bereket daha lazım)`,`(need ${rem-D.coins} more bereket)`)));
++    const b=padEl.querySelector('button');b.disabled=!ok;setT(b,'🪙 '+rem);b.setAttribute('aria-label',L2('Satın al: ','Buy: ')+p.u.label+' '+rem);}
++  if(padEl.hidden){padEl.hidden=false;tone(HIC[6],.06,.03);}}
++padEl.querySelector('button').addEventListener('click',e=>{e.stopPropagation();const p=PADUI.p;if(p&&buyPad(p)){padEl.hidden=true;PADUI.p=null;}});
++/* ---------- T08: the arrow follows what you are holding ---------- */
++siteTarget=function(){if(state!=='play'||R.done)return null;const top=stack[stack.length-1],n=R.ch;
++  if(n===1)return top==='mud'?ZT(Z.dump):ZT(nearestMud());
++  if(n===2)return top==='rubble'?ZT(Z.dump):ZT(Z.rubble);
++  if(n===4){if(top!=='water')return ZT(Z.well);let b=null;for(const f of F4)if(!b||f.anger>b.anger)b=f;return b?{x:b.x,z:b.z,n:b.name}:null;}
++  if(top==='water'){if(!R.thirsty)return ZT(Z.well);let c=cutter[0];if(carp&&carp.g.visible&&Math.hypot(P.x-carp.x,P.z-carp.z)<Math.hypot(P.x-c.x,P.z-c.z))c=carp;return {x:c.x,z:c.z,n:L2('Ustalar','Craftsmen')};}
++  if(top==='raw')return ZT(Z.cutIn);if(top==='rawwood')return ZT(Z.carIn);if(top==='block'||top==='beam')return ZT(Z.wall);
++  if(R.thirsty)return ZT(Z.well);
++  const c=COURSES[R.course];if(!c)return null;const need=c.t==='stone'?'block':'beam';if((R.bank[need]||0)>0)return ZT(Z.wall);
++  if(c.t==='stone')return Z.cutOut.count>=2||(Z.cutOut.count>0&&Z.raw.count===0)?ZT(Z.cutOut):Z.cutIn.count>=Z.cutIn.max-2&&Z.cutOut.count>0?ZT(Z.cutOut):ZT(Z.raw);
++  return Z.carOut.count>=2||(Z.carOut.count>0&&Z.rawWood.count===0)?ZT(Z.carOut):ZT(Z.rawWood);};
++{const cb0=courseBeat;courseBeat=function(top,cap,take,give){
++  if(top==='water'&&!R.thirsty&&inZ(Z.well)){while(stack[stack.length-1]==='water')stack.pop();sfx.pour();top=stack[stack.length-1];}
++  cb0(top,cap,take,give);};}
++/* ---------- T03-T05 extras ---------- */
++{const cc0=cleanupChapter;cleanupChapter=function(){cc0();padEl.hidden=true;PADUI.p=null;flights.forEach(f=>{if(f.ghost)scene.remove(f.m);});flights.length=0;};}
++/* ---------- result: say what opened ---------- */
++{const sr0=showResult;showResult=function(n,s,first){sr0(n,s,first);const card=$('#kcard'),k=card&&card.querySelector('.kbtns');if(!k)return;
++  const nx=n<NCH?CH[n+1]:null;const t=nx?L2('Sırada: ','Next: ')+nx.icon+' '+L2('Bölüm ','Chapter ')+(n+1)+' · '+nx.name:L2('Açıldı: 🫖 Hacılara Hizmet: hikâyeden sonra sınırsız mevsimler','Unlocked: 🫖 Serving the Pilgrims: endless seasons after the story');
++  const d=document.createElement('p');d.className='knext';d.textContent=t;k.parentNode.insertBefore(d,k);};}
++/* ---------- T17/T18: settings that do something ---------- */
++const CTRL_HTML=()=>`<dl>${isTouch||DP.on?`<dt>${L2('Yürü','Walk')}</dt><dd>${DP.on?L2('Sol alttaki yön tuşları','The arrow pad, bottom left'):L2('Ekranın sol yarısında parmağını sürükle','Drag a finger on the left half of the screen')}</dd><dt>${L2('Kamera','Camera')}</dt><dd>${L2('Sağ yarıda sürükle','Drag on the right half')}</dd>`:`<dt>W A S D</dt><dd>${L2('Yürü (ok tuşları da olur)','Walk (arrow keys work too)')}</dd><dt>${L2('Fare','Mouse')}</dt><dd>${L2('Sürükle: kamerayı çevir · teker: yakınlaş','Drag: turn the camera · wheel: zoom')}</dd><dt>Esc</dt><dd>${L2('Duraklat','Pause')}</dd>`}
++  <dt>${L2('Yükle / bırak','Load / drop')}</dt><dd>${L2('Renkli dairelerde dur; yük kendiliğinden alınır ya da bırakılır.','Stand in a coloured circle; loads are picked up or set down by themselves.')}</dd>
++  <dt>${L2('Yükseltme','Upgrade')}</dt><dd>${L2('Altın daireye gel, kartta “Al”a dokun. Bereket kendiliğinden harcanmaz.','Step on a golden circle and tap “Buy” on the card. Bereket is never spent on its own.')}</dd>
++  <dt>${L2('Ok','Arrow')}</dt><dd>${L2('Yerdeki sarı ok, elindekine göre sıradaki yeri gösterir.','The yellow ground arrow points to the next place for what you are holding.')}</dd></dl>`;
++const ABOUT_HTML=()=>`<p><b>${NAME}</b> · ${L2('Mekke, M.S. 605','Mecca, 605 CE')}</p><p>${L2('Sel Kâbe\'nin duvarlarını yıkınca Kureyş onu helal kazançla yeniden yaptı. Sen isimsiz, kurgusal bir Mekkelisin.','When a flood broke the Kaaba\'s walls, Quraysh rebuilt it with lawfully earned wealth. You are a nameless, fictional Meccan.')}</p>
++  <p>${L2('Efendimiz (s.a.v.) ve ashâbı hiçbir sahnede tasvir edilmez; yalnızca anlatılır.','The Prophet (peace be upon him) and his Companions are never depicted in any scene; they are only narrated.')}</p>
++  <p>${L2('Kaynaklar: TDV İslâm Ansiklopedisi (Kâbe, Sikâye, Rifâde maddeleri), İbn Hişâm, es-Sîre. Oyundaki iş akışı, yükseltmeler ve sayılar oyun mekaniğidir.','Sources: TDV Encyclopedia of Islam (Kaaba, Siqaya, Rifada entries), Ibn Hisham, al-Sira. The work loop, upgrades and numbers are game mechanics.')}</p>
++  <p style="margin:0">${L2('Açık kaynak: three.js r128 (MIT), Alegreya ve Alegreya Sans (SIL OFL 1.1).','Open source: three.js r128 (MIT), Alegreya and Alegreya Sans (SIL OFL 1.1).')}</p>`;
++function extendSheet(){const g=document.getElementById('kset');if(!g||g.__x)return;g.__x=1;
++  const mk=(id,txt,fn)=>{const b=document.createElement('button');b.id=id;b.textContent=txt();b.onclick=()=>{fn();b.textContent=txt();};g.appendChild(b);};
++  mk('m-rm',()=>L2('Hareket: ','Motion: ')+(RM()?L2('Azaltılmış','Reduced'):L2('Normal','Normal')),()=>{D.rm=!D.rm;applyRM();ssave();});
++  mk('m-vib',()=>L2('Titreşim: ','Vibration: ')+(D.novib?L2('Kapalı','Off'):L2('Açık','On')),()=>{D.novib=!D.novib;ssave();if(!D.novib)hap('heavy');});
++  if(reduce)g.querySelector('#m-rm').disabled=true;}
++function infoToggle(kind,e){const g=document.getElementById('kset');if(!g||!e.currentTarget.closest('#kset'))return;e.stopImmediatePropagation();e.preventDefault();
++  let box=document.getElementById('kinfo');if(box&&box.dataset.k===kind){box.remove();return;}
++  if(!box){box=document.createElement('div');box.id='kinfo';g.parentNode.insertBefore(box,g.nextSibling);}box.dataset.k=kind;box.innerHTML=kind==='c'?CTRL_HTML():ABOUT_HTML();box.scrollIntoView({block:'nearest'});}
++{const c=$('#m-controls'),a=$('#m-about');if(c)c.addEventListener('click',e=>infoToggle('c',e),true);if(a)a.addEventListener('click',e=>infoToggle('a',e),true);}
++/* ---------- back: Escape on the web, the system back button on Android ---------- */
++function goBack(){
++  if(!AN.hidden)return true;                                   // a cutscene owns the screen; its own skip button handles it
++  if(!KS.hidden){const c=$('#kcard');const b=c&&c.querySelector('[data-back],#kp-go,#kset-ok,#ks-x,#kmore-x,#kr-map,#kf-map,#ke-ok');if(b){b.click();return true;}
++    closeSheet();if(KM.hidden&&KT.hidden&&state!=='play')showMap();return true;}
++  if(typeof overlay==='function'&&overlay()){closeOverlays();return true;}   // book / map first
++  if(SITE.on&&state==='play'){const b=$('#b-menu');if(b)b.click();return true;}
++  if(!KM.hidden){showTitle();return true;}
++  if(!KT.hidden)return false;                                  // title: let the app close
++  if(state==='play'){openMenu();return true;}
++  return false;}
++addEventListener('keydown',e=>{if(e.code!=='Escape'||MODE==='p2')return;if(!SITE.on&&KT.hidden&&KM.hidden&&KS.hidden)return;e.stopImmediatePropagation();e.preventDefault();goBack();},true);
++try{const A=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;if(A&&A.addListener)A.addListener('backButton',()=>{if(!goBack()){try{if(SITE.on&&canSnap())saveRun();else ssave();}catch(_){}A.exitApp();}});}catch(_){}
++/* ---------- WebGL context loss: save, explain, reload ---------- */
++{const gl=el(`<div id="kglost" hidden role="alert"><div>${L2('Grafik sistemi yeniden başlatılıyor…','The graphics system is restarting…')}<br><small style="font-weight:600">${L2('İlerlemen kaydedildi.','Your progress is saved.')}</small></div></div>`);document.body.appendChild(gl);
++  cv.addEventListener('webglcontextlost',e=>{e.preventDefault();try{saveRun()||ssave();}catch(_){}gl.hidden=false;resetInput();},false);
++  cv.addEventListener('webglcontextrestored',()=>{try{sessionStorage.setItem('kabe-resume','1');}catch(_){}location.reload();},false);}
++/* ---------- marker label never clips at the screen edge or sits on the pad ---------- */
++updateMarker=function(){const t=(state==='play'||state==='card'||state==='dlg')?currentTarget():null;if(!t){if(!marker.hidden)marker.hidden=true;return;}
++  marker.hidden=false;const y=height(t.x,t.z)+2.6;mvec.set(t.x,y,t.z).project(camera);
++  setT(markerTxt,t.n+' · '+Math.round(Math.hypot(P.x-t.x,P.z-t.z))+' m');
++  if(marker.__t!==markerTxt.textContent){marker.__t=markerTxt.textContent;marker.__hw=marker.offsetWidth/2||60;}
++  const W=innerWidth,H=innerHeight,hw=Math.min(W/2-8,(marker.__hw||60)+10);let behind=mvec.z>1;let x=mvec.x,yy=mvec.y;if(behind){x=-x;yy=-yy;}
++  const top=96,bot=H-((isTouch||DP.on)?190:90);
++  let px=(x*.5+.5)*W,py=(-yy*.5+.5)*H;const off=behind||px<hw||px>W-hw||py<top||py>bot;
++  px=Math.max(hw,Math.min(W-hw,px));py=Math.max(top,Math.min(bot,py));
++  marker.style.transform=`translate(${Math.round(px)}px,${Math.round(py)}px) translate(-50%,-100%)`;marker.classList.toggle('edge',off);};
++/* ---------- T20: HUD writes only what changed ---------- */
++const NAMES_T={mud:L2('Çamur','Mud'),rubble:L2('Moloz','Rubble'),raw:L2('Ham taş','Raw stone'),block:L2('Kesme taş','Cut stone'),rawwood:L2('Tomruk','Timber'),beam:L2('Kiriş','Beam'),water:L2('Su','Water'),dates:L2('Hurma','Dates'),flour:L2('Un','Flour'),bread:L2('Ekmek','Bread')};
++const hEl={bar:$('#chbar i'),st:$('#r-stone b'),co:$('#r-wood b'),gd:$('#r-good b'),kb:$('#r-kabe b')};
++{const g=$('#r-good');if(g)g.title=L2('İyilik','Kindness');const s=$('#r-stone');if(s)s.title=L2('Taşıdığın / kapasite','Carrying / capacity');}
++function actionLine(){const t=currentTarget();if(!t)return '';return (stack.length?L2('Götür: ','Take to: '):L2('Git: ','Go to: '))+t.n;}
++function hudSite(dt){const n=R.ch,c=CH[n]||{};
++  setT(qCh,(LANG==='en'?'CHAPTER ':'BÖLÜM ')+n+' · '+(c.name||''));let goal='',frac=0;
++  if(n===1){goal=L2('Çamur: ','Mud: ')+R.n+'/'+c.goal;frac=R.n/c.goal;}
++  else if(n===2){goal=L2('Moloz: ','Rubble: ')+R.n+'/'+c.goal;frac=R.n/c.goal;}
++  else if(n===4){goal=L2('Kavga çıkmasın','Keep the peace');frac=Math.min(1,R.t/c.par);}
++  else if(c.c0!=null){const cc=COURSES[R.course];let tot=0,dn=0;for(let i=c.c0;i<c.c1;i++){tot+=COURSES[i].n;if(i<R.course)dn+=COURSES[i].n;else if(i===R.course)dn+=R.inCourse;}frac=dn/tot;
++    goal=cc?(cc.roof?L2('Çatı','Roof'):cc.door?L2('Kapı','Door'):(R.course+1)+(LANG==='en'?'. course':'. sıra'))+': '+R.inCourse+'/'+cc.n+' '+(cc.t==='stone'?L2('kesme taş','cut stones'):L2('kiriş','beams')):'';}
++  setT(qGoal,goal);setW(hEl.bar,Math.round(Math.min(1,frac)*100)+'%');
++  setT(qSub,R.thirsty?L2('Ustalar susadı: Zemzem\'den su götür','The craftsmen are thirsty: bring Zamzam water'):actionLine());
++  const cap=hooks.cap?hooks.cap():D.cap,top=stack[stack.length-1];setT(hEl.st,(top?NAMES_T[top]+' ':'')+stack.length+'/'+cap);setT(hEl.co,String(D.coins));setT(hEl.gd,String(D.good));
++  let done=0,tot=0;COURSES.forEach((cc,i)=>{tot+=cc.n;if(i<R.course)done+=cc.n;else if(i===R.course)done+=R.inCourse;});setT(hEl.kb,(n<3?0:Math.round(done/tot*100))+'%');
++  if(!carryEl.hidden)carryEl.hidden=true;if(toastT>0){toastT-=dt;if(toastT<=0)toastEl.classList.remove('on');}}
++updateHud=function(dt){if(!SITE.on){uh9(dt);return;}hudSite(dt);};
++/* ---------- polish: loads fly between pile and arms ---------- */
++const flights=[];const fv=new V3(),fw=new V3();
++function nearZone(){let b=null,bd=5.5;for(const z of ZONES){if(!z.mesh.visible)continue;const d=Math.hypot(P.x-z.x,P.z-z.z);if(d<bd){bd=d;b=z;}}return b;}
++function zonePt(z){const g=z.pileG;if(g&&g.visible){g.getWorldPosition(fw);fw.y+=.5;return fw.clone();}return new V3(z.x,height(z.x,z.z)+.4,z.z);}
++{const sv0=stackVis;stackVis=function(){const before=stackG.children.length;
++  if(stack.length<before&&SITE.on&&!RM()){const z=nearZone();const to=z?zonePt(z):null;
++    for(let i=before-1;i>=stack.length;i--){const m=stackG.children[i];if(!to||flights.length>24){continue;}m.getWorldPosition(fv);stackG.remove(m);m.position.copy(fv);m.scale.setScalar(.8);scene.add(m);flights.push({m,ghost:true,t:0,d:.28,a:fv.clone(),b:to.clone()});}}
++  sv0();const after=stackG.children.length;
++  if(after!==before&&SITE.on&&state==='play'){hap();if(after===(hooks.cap?hooks.cap():D.cap)&&after>before)hap('heavy');}
++  if(after>before&&SITE.on&&!RM()){const z=nearZone();if(z){const w=zonePt(z);
++    for(let i=before;i<after;i++){const m=stackG.children[i];const a=stackG.worldToLocal(w.clone());flights.push({m,ghost:false,t:0,d:.22+(i-before)*.04,a,b:m.position.clone()});m.position.copy(a);}}}};}
++function stepFlights(dt){for(let i=flights.length-1;i>=0;i--){const f=flights[i];f.t+=dt;const k=Math.min(1,f.t/f.d),e=k*k*(3-2*k);
++    f.m.position.lerpVectors(f.a,f.b,e);f.m.position.y+=Math.sin(k*Math.PI)*.9;
++    if(k>=1){if(f.ghost){scene.remove(f.m);puff(f.b.x,f.b.y-.3,f.b.z,2);}else f.m.position.copy(f.b);flights.splice(i,1);}}}
++/* ---------- see the courses through the scaffold ---------- */
++if(KP.scaffold&&KP.scaffold.material){const m=KP.scaffold.material;m.transparent=true;m.opacity=.55;m.depthWrite=false;m.needsUpdate=true;}
++/* ---------- per-frame glue ---------- */
++{const es0=extraStep;extraStep=function(dt){es0(dt);if(!SITE.on)return;stepFlights(Math.min(dt,.05));stepPadUI();
++  if(canSnap()&&gameActive()){snapT+=dt;if(snapT>2){snapT=0;saveRun();}}else if(!canSnap()&&runDirty&&state!=='play'){ssave();}};}
++/* ---------- cutscene objects: everything that existed before any cutscene is shared ---------- */
++isSharedMat(null);
++scene.traverse(o=>{if(o.geometry)SHARED_GEO.add(o.geometry);const ms=Array.isArray(o.material)?o.material:o.material?[o.material]:[];ms.forEach(m=>{SHARED_MATS.add(m);if(m.map)SHARED_MATS.add(m.map);});});
++for(const g of [typeof stoneGeo!=='undefined'?stoneGeo:null,typeof plankGeo!=='undefined'?plankGeo:null,typeof sackGeo!=='undefined'?sackGeo:null])if(g)SHARED_GEO.add(g);
++for(const k in mat){const m=mat[k];if(m&&m.map)SHARED_MATS.add(m.map);}
++[blockMat,jugMat].forEach(m=>{if(m){SHARED_MATS.add(m);if(m.map)SHARED_MATS.add(m.map);}});
++/* ---------- debug surface for tests ---------- */
++Object.assign(window.__site,{startChapter,showStory,saveRun,resumeRun,snapRun,goBack,resetInput,siteTarget:()=>siteTarget(),gameActive,PADUI,buyPad,nearestPad,award,ssave,sload,cleanProfile,
++  flights:()=>flights.length,FIRES:()=>FIRES.length,mem:()=>Object.assign({},renderer.info.memory),setStack:a=>{stack=a.slice();stackVis();},unload:()=>unload,
++  zonesOf:()=>Object.fromEntries(Object.entries(Z).filter(([k,v])=>v&&v.mesh).map(([k,v])=>[k,{x:v.x,z:v.z,count:v.count,vis:v.mesh.visible}])),
++  setP:(x,z)=>{P.x=x;P.z=z;P.y=height(x,z);},getP:()=>({x:P.x,z:P.z}),state:()=>state,hud:()=>({ch:qCh.textContent,goal:qGoal.textContent,sub:qSub.textContent,stone:hEl.st.textContent,coins:hEl.co.textContent}),
++  marker:()=>({hidden:marker.hidden,t:markerTxt.textContent,r:marker.getBoundingClientRect().toJSON()})});
+--- /dev/null	2026-11-06 23:42:18.619151807 -0500
++++ l13.js	2026-11-07 18:08:42.556651115 -0500
+@@ -0,0 +1,211 @@
++/* ===================== l13: Hacılara Hizmet: the endless layer after the story =====================
++   Historical frame: Quraysh's offices of Siqaya (water) and Rifada (food) for pilgrims, organised by Qusayy.
++   Game frame: stock three stands, keep queues moving, hire helpers, finish ever larger pilgrimage seasons.
++   Nobody here is a named historical person; the hero stays the same nameless Meccan. */
++const MCH=8;
++CH[MCH]={name:L2('Hacılara Hizmet','Serving the Pilgrims'),icon:'🫖',par:600,story:'',learn:'',
++  task:L2('Hacılara su, hurma ve ekmek ikram et: stantları dolu tut, tezgâhtaki bereketi topla.','Serve the pilgrims water, dates and bread: keep the stands stocked and collect the bereket on the counters.')};
++const MUPG=[
++  {id:'standD',cost:120,icon:'🌴',label:L2('Hurma ikramı','Date stand'),desc:L2('Hurma standı ve kervanı açılır. Bir hurma ikramı 4 bereket.','Opens the date stand and its caravan. Each serving pays 4 bereket.')},
++  {id:'mcap1',cost:150,icon:'🎒',label:L2('Taşıma +2','Carry +2'),desc:L2('Burada bir seferde 2 yük daha taşırsın.','Carry 2 more loads here.')},
++  {id:'saka',cost:220,icon:'🫗',label:L2('Saka (sucu)','Water carrier'),desc:L2('Zemzem\'den su standına su taşır; sen yokken de çalışır.','Carries Zamzam water to the water stand, even while you are away.')},
++  {id:'standB',cost:380,need:'standD',icon:'🍞',label:L2('Ekmek ikramı','Bread stand'),desc:L2('Un, fırın ve ekmek standı açılır. Bir ekmek ikramı 6 bereket.','Opens flour, the oven and the bread stand. Each serving pays 6 bereket.')},
++  {id:'shade',cost:300,icon:'⛱️',label:L2('Gölgelik','Shade'),desc:L2('Hacılar sırada %50 daha uzun sabreder.','Pilgrims wait 50% longer in the queues.')},
++  {id:'hurmaci',cost:450,need:'standD',icon:'🧺',label:L2('Hurma yardımcısı','Date helper'),desc:L2('Kervandan hurma standına hurma taşır; sen yokken de çalışır.','Carries dates to the stand, even while you are away.')},
++  {id:'big',cost:500,icon:'🪵',label:L2('Büyük tezgâh','Big counters'),desc:L2('Her stant iki kat stok tutar.','Every stand holds twice the stock.')},
++  {id:'mcap2',cost:600,need:'mcap1',icon:'🎒',label:L2('Taşıma +2','Carry +2'),desc:L2('Burada bir seferde 2 yük daha taşırsın.','Carry 2 more loads here.')},
++  {id:'cirak',cost:700,need:'standB',icon:'🧑‍🍳',label:L2('Fırıncı çırağı','Baker\'s apprentice'),desc:L2('Unu fırına, ekmeği standa taşır; sen yokken de çalışır.','Carries flour to the oven and bread to the stand, even while you are away.')}];
++const STD={w:{k:'w',item:'water',price:2,icon:'💧',label:L2('Su ikramı','Water stand'),base:[12.5,-8.5],q:[],cash:0,t:0},
++  d:{k:'d',item:'dates',price:4,icon:'🌴',label:L2('Hurma ikramı','Date stand'),base:[-13.5,8.5],q:[],cash:0,t:0,unlock:'standD'},
++  b:{k:'b',item:'bread',price:6,icon:'🍞',label:L2('Ekmek ikramı','Bread stand'),base:[-4.5,-16],q:[],cash:0,t:0,unlock:'standB'}};
++const ITEM_STAND={water:'w',dates:'d',bread:'b'};
++function cleanMeta(m){const n=(v,d,lo,hi)=>{v=Number(v);return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};m=m&&typeof m==='object'?m:{};
++  const o={season:Math.round(n(m.season,1,1,9999)),ss:Math.round(n(m.ss,0,0,1e6)),ms:Math.round(n(m.ms,0,0,1e6)),served:Math.round(n(m.served,0,0,1e9)),missed:Math.round(n(m.missed,0,0,1e9)),
++    earned:Math.round(n(m.earned,0,0,1e9)),lastT:n(m.lastT,0,0,1e14),intro:m.intro?1:0,between:m.between?1:0,up:{},stock:{},cash:{}};
++  if(m.up&&typeof m.up==='object')for(const u of MUPG)if(m.up[u.id])o.up[u.id]=true;
++  for(const k of ['w','d','b','dates','flour','oven','ovenOut'])o.stock[k]=Math.round(n(m.stock&&m.stock[k],0,0,40));
++  for(const k in STD)o.cash[k]=Math.round(n(m.cash&&m.cash[k],0,0,1e6));
++  return o;}
++D.meta=cleanMeta(D.meta);
++{const cp0=cleanProfile;cleanProfile=function(s){const o=cp0(s);o.meta=cleanMeta(o.meta);return o;};}
++const MU=id=>!!D.meta.up[id];
++const standOpen=k=>!STD[k].unlock||MU(STD[k].unlock);
++const openStands=()=>Object.keys(STD).filter(standOpen);
++function seasonTarget(s){return 15+5*(s-1)*(s+2)/2;}
++function metaCap(){return D.cap+(MU('mcap1')?2:0)+(MU('mcap2')?2:0);}
++/* ---------- items ---------- */
++ITEM.flour='sack';
++const datesGeo=new THREE.CylinderGeometry(.24,.19,.22,10),datesMat=new THREE.MeshLambertMaterial({color:0x7a4320});
++const breadGeo=new THREE.CylinderGeometry(.27,.27,.09,14),breadMat=new THREE.MeshLambertMaterial({color:0xd9a35a});
++const coinGeo=new THREE.CylinderGeometry(.12,.12,.04,10),coinMat=new THREE.MeshLambertMaterial({color:0xe3a51f,emissive:0x3a2600});
++[datesGeo,breadGeo,coinGeo].forEach(g=>SHARED_GEO.add(g));[datesMat,breadMat,coinMat].forEach(m=>SHARED_MATS.add(m));
++{const io0=itemOf;itemOf=function(t){if(t==='dates'){const m=new THREE.Mesh(datesGeo,datesMat);m.castShadow=true;return m;}if(t==='bread'){const m=new THREE.Mesh(breadGeo,breadMat);m.castShadow=true;return m;}return io0(t);};}
++NAMES_T.dates=L2('Hurma','Dates');NAMES_T.flour=L2('Un','Flour');NAMES_T.bread=L2('Ekmek','Bread');
++/* ---------- the place ---------- */
++let metaBuilt=false,metaG=null,KC=null,RING=11.6,GATES=[],baker=null,ovenFire=null;const MPADS=[],PIL=[],HELP=[];
++const PMAX=QL.tier==='low'?8:QL.tier==='med'?12:14;
++function stall(x,z,ox,oz,col){const g=new THREE.Group();g.position.set(x,height(x,z),z);g.rotation.y=Math.atan2(ox,oz);
++  const top=new THREE.Mesh(new THREE.BoxGeometry(2.6,.16,1.1),mat.wood);top.position.y=.9;top.castShadow=top.receiveShadow=true;g.add(top);
++  const front=new THREE.Mesh(new THREE.BoxGeometry(2.5,.8,.12),mat.wood);front.position.set(0,.45,.48);g.add(front);
++  for(const sx of [-1.2,1.2])for(const sz of [-.5,.5]){const p=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,2.3,6),mat.wood);p.position.set(sx,1.15,sz);g.add(p);}
++  const aw=new THREE.Mesh(new THREE.PlaneGeometry(2.9,1.5),new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide}));aw.rotation.x=-Math.PI/2+.25;aw.position.y=2.32;aw.castShadow=true;g.add(aw);
++  metaG.add(g);return g;}
++function buildMeta(){if(metaBuilt)return;metaBuilt=true;build();metaG=new THREE.Group();scene.add(metaG);KC=kW(0,0);
++  Z.well.chs.push(MCH);
++  for(const k in STD){const s=STD[k];const p=freeSpot(s.base[0],s.base[1],2.2);let ox=p.x-KC.x,oz=p.z-KC.z;const l=Math.hypot(ox,oz)||1;ox/=l;oz/=l;s.out={x:ox,z:oz};
++    const cx=p.x+ox*1.9,cz=p.z+oz*1.9;s.g=stall(cx,cz,ox,oz,k==='w'?0x2f5d8a:k==='d'?0x4d6b3a:0x8a3a2c);
++    const z=zone({id:'st_'+k,chs:[MCH],x:p.x,z:p.z,icon:s.icon,label:s.label,col:'#b5523b',r:1.8,pileAt:{x:cx,z:cz},item:s.item,max:8,cols:3,when:()=>standOpen(k)});
++    z.pileG.position.y+=.98;z.pileG.rotation.y=s.g.rotation.y;Z['st_'+k]=z;s.z=z;
++    s.coins=new THREE.Group();s.coins.position.set(cx+(-oz)*.95,height(cx,cz)+.99,cz+ox*.95);metaG.add(s.coins);}
++  Z.mdates=zone({id:'mdates',chs:[MCH],x:-25,z:15,icon:'🐪',label:L2('Hurma kervanı','Date caravan'),col:'#7a5a3a',pileAt:{x:-27.4,z:17},item:'dates',max:20,cols:4,when:()=>standOpen('d')});
++  Z.mdates.camel=animal('camel',-30,19);Z.mdates.camel.graze=false;Z.mdates.camel.face=2.2;Z.mdates.camel.g.visible=false;
++  Z.mflour=zone({id:'mflour',chs:[MCH],x:7,z:-25,icon:'🌾',label:L2('Un çuvalları','Flour sacks'),col:'#7a6553',pileAt:{x:9.4,z:-27},item:'flour',max:18,cols:3,when:()=>standOpen('b')});
++  const ov=freeSpot(-4,-24,2);Z.oven=zone({id:'oven',chs:[MCH],x:ov.x+2.6,z:ov.z,icon:'🔥',label:L2('Fırın','Oven'),col:'#8a3a2c',r:1.8,pileAt:{x:ov.x+2.4,z:ov.z+2},item:'flour',max:10,cols:2,when:()=>standOpen('b')});
++  Z.ovenOut=zone({id:'ovenOut',chs:[MCH],x:ov.x-2.6,z:ov.z,icon:'🍞',label:L2('Taze ekmek','Fresh bread'),col:'#3d8a59',r:1.8,pileAt:{x:ov.x-2.4,z:ov.z+2},item:'bread',max:12,cols:3,when:()=>standOpen('b')});
++  const dome=new THREE.Mesh(new THREE.SphereGeometry(1.2,16,10,0,Math.PI*2,0,Math.PI/2),mat.clay||mat.wood);dome.position.set(ov.x,height(ov.x,ov.z),ov.z);dome.castShadow=true;metaG.add(dome);Z.oven.dome=dome;
++  baker=makePerson({robe:0x8a6a4a,cloth:0xf2e8d5,beard:0x3a2e26,hat:'scarf'});const bs=freeSpot(ov.x,ov.z+1.9,.4);baker.x=bs.x;baker.z=bs.z;baker.g.position.set(bs.x,height(bs.x,bs.z),bs.z);baker.g.rotation.y=Math.PI;scene.add(baker.g);baker.t=0;
++  GATES=[[32,-12],[-31,-8],[-6,31],[24,24]].map(([x,z])=>freeSpot(x,z,.8));
++  metaG.visible=false;baker.g.visible=false;}
++/* ---------- upgrade pads for this layer ---------- */
++const MPOS=[[17,9],[13.5,12.5],[9.5,14.5]];
++function syncMPads(){for(const p of MPADS.splice(0))scene.remove(p.mesh);if(R.ch!==MCH)return;
++  const av=MUPG.filter(u=>!MU(u.id)&&(!u.need||MU(u.need))).slice(0,3);
++  av.forEach((u,i)=>{const s=freeSpot(MPOS[i][0],MPOS[i][1],1.7);u.x=s.x;u.z=s.z;
++    const m=new THREE.Mesh(new THREE.CircleGeometry(1.6,40),new THREE.MeshBasicMaterial({map:padTex(u.icon,'★'+u.cost,'#d39a2c'),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4}));
++    m.rotation.x=-Math.PI/2;m.position.set(u.x,height(u.x,u.z)+.07,u.z);scene.add(m);
++    const p={u,mesh:m,paid:0,buy(){D.meta.up[u.id]=true;applyMeta();syncMPads();toast('✓ '+u.label+': '+u.desc,4);}};MPADS.push(p);});}
++PADSETS.push(()=>R.ch===MCH?MPADS:[]);
++function applyMeta(){const big=MU('big');for(const k in STD){STD[k].z.max=big?16:8;}makeHelpers();}
++/* ---------- helpers ---------- */
++const HJOB={saka:()=>({src:Z.well,dst:STD.w.z,item:'water',inf:true}),hurmaci:()=>({src:Z.mdates,dst:STD.d.z,item:'dates'}),
++  cirak:()=>Z.ovenOut.count>=2&&STD.b.z.count<STD.b.z.max?{src:Z.ovenOut,dst:STD.b.z,item:'bread'}:Z.mflour.count>=2&&Z.oven.count<Z.oven.max-2?{src:Z.mflour,dst:Z.oven,item:'flour'}:null};
++const HLOOK={saka:{robe:0x2f5d8a,cloth:0xe9dcc0,hat:'scarf'},hurmaci:{robe:0x4d6b3a,cloth:0xf2e8d5,hat:'turban'},cirak:{robe:0xc58b3a,cloth:0xf2e8d5,hat:'scarf'}};
++function makeHelpers(){for(const id in HJOB){if(!MU(id)||HELP.some(h=>h.id===id))continue;const per=makePerson(Object.assign({beard:0x3a2e26},HLOOK[id]));const s=freeSpot(16,4,.4);
++    const h={id,per,x:s.x,z:s.z,face:0,carry:[],job:null,t:0};per.g.position.set(s.x,height(s.x,s.z),s.z);scene.add(per.g);per.g.visible=R.ch===MCH;HELP.push(h);}}
++function stepHelpers(dt,sim){for(const h of HELP){h.per.g.visible=true;let sp=0;
++    if(!h.job)h.job=HJOB[h.id]();const j=h.job;if(!j){animPerson(h.per,dt,0,'idle');continue;}
++    const t=h.carry.length?j.dst:j.src;const dx=t.x-h.x,dz=t.z-h.z,d=Math.hypot(dx,dz);
++    if(d>1.1){if(sim){const v=2.6;h.x+=dx/d*v*dt;h.z+=dz/d*v*dt;h.face=Math.atan2(dx,dz);sp=v;collideEnt(h,.3,0);}}
++    else if(sim){h.t+=dt;if(h.t>.35){h.t=0;
++      if(h.carry.length){if(j.dst.count<j.dst.max){h.carry.pop();j.dst.count++;pileVis(j.dst);}else{h.carry.length=0;}if(!h.carry.length)h.job=null;}
++      else{if(j.inf){h.carry=[1,1,1];}else if(j.src.count>=1){const n=Math.min(3,j.src.count);j.src.count-=n;h.carry=new Array(n).fill(1);pileVis(j.src);}else h.job=null;}}}
++    h.per.g.position.set(h.x,height(h.x,h.z),h.z);h.per.g.rotation.y=h.face;animPerson(h.per,dt,sp,h.carry.length?'carry':sp?'walk':'idle');}}
++/* ---------- pilgrims ---------- */
++const PROBES=[0xe8dcc4,0xd9cdb3,0x8a6a4a,0xb59a74,0x6b4a7a,0x2f5d8a,0x8a3a2c,0x4d6b3a];
++function getPilgrim(){let p=PIL.find(q=>!q.on);if(!p){if(PIL.length>=PMAX)return null;const per=makePerson({robe:PROBES[PIL.length%PROBES.length],cloth:0xf2e8d5,female:PIL.length%3===1});scene.add(per.g);p={per,on:false};PIL.push(p);}return p;}
++let spawnT=0;
++function spawnPilgrim(){const open=openStands();let best=null;for(const k of open){const s=STD[k];if(s.q.length>=6)continue;if(!best||s.q.length<STD[best].q.length||(s.q.length===STD[best].q.length&&Math.random()<.5))best=k;}
++  if(!best)return;const p=getPilgrim();if(!p)return;const g=GATES[(Math.random()*GATES.length)|0];
++  Object.assign(p,{on:true,st:'in',stand:STD[best],x:g.x,z:g.z,face:0,wait:0,pat:(30-Math.min(10,D.meta.season))*(MU('shade')?1.5:1),stuck:0,gate:g});
++  p.per.g.visible=true;p.per.g.position.set(p.x,height(p.x,p.z),p.z);STD[best].q.push(p);}
++function slotOf(p){const s=p.stand,i=s.q.indexOf(p);const z=s.z;return {x:z.x+s.out.x*(3.6+1.15*i),z:z.z+s.out.z*(3.6+1.15*i)};}
++function walk(p,tx,tz,dt,v){const dx=tx-p.x,dz=tz-p.z,d=Math.hypot(dx,dz);if(d<.18)return 0;const s=Math.min(d,v*dt);const ox=p.x,oz=p.z;p.x+=dx/d*s;p.z+=dz/d*s;p.face=Math.atan2(dx,dz);collideEnt(p,.3,0);
++  if(Math.hypot(p.x-ox,p.z-oz)<s*.25){p.stuck+=dt;if(p.stuck>1.2){p.x=ox+dx/d*Math.min(d,1.2);p.z=oz+dz/d*Math.min(d,1.2);p.stuck=0;}}else p.stuck=0;return v;}
++function leaveQueue(p){const q=p.stand.q,i=q.indexOf(p);if(i>=0)q.splice(i,1);}
++function serve(s){const p=s.q[0];s.z.count--;pileVis(s.z);s.cash+=s.price;D.meta.ss++;D.meta.served++;coinVis(s);leaveQueue(p);
++  p.st='tw';p.ang=Math.atan2(p.z-KC.z,p.x-KC.x);p.left=Math.PI*2;
++  const c=s.g.position;if(Math.random()<.35)ftext([L2('Allah razı olsun!','God bless you!'),L2('Bereketli olsun!','May it be blessed!'),L2('Eksik olmayın!','Thank you kindly!')][(Math.random()*3)|0],c.x,2.6,c.z,'#ffe3a6');
++  tone(HIC[5],.08,.03);if(D.meta.ss>=seasonTarget(D.meta.season)&&!D.meta.between)seasonDone();}
++function coinVis(s){const n=Math.min(14,Math.ceil(s.cash/3));const g=s.coins;while(g.children.length>n)g.remove(g.children[g.children.length-1]);
++  while(g.children.length<n){const i=g.children.length;const m=new THREE.Mesh(coinGeo,coinMat);m.position.set((i%2)*.18,.03+Math.floor(i/2)*.045,0);g.add(m);}}
++function stepPilgrims(dt,sim){for(const p of PIL){if(!p.on)continue;let sp=0;const per=p.per;
++    if(sim){if(p.st==='in'||p.st==='q'){p.wait+=dt;if(p.wait>p.pat){leaveQueue(p);p.st='out';D.meta.ms++;D.meta.missed++;ftext('😞',p.x,2.4,p.z);}}
++      if(p.st==='in'||p.st==='q'){const t=slotOf(p);sp=walk(p,t.x,t.z,dt,2.3);p.st=sp?'in':'q';}
++      else if(p.st==='tw'){const tx=KC.x+Math.cos(p.ang)*RING,tz=KC.z+Math.sin(p.ang)*RING;sp=walk(p,tx,tz,dt,2.3);if(!sp)p.st='lap';}
++      else if(p.st==='lap'){const w=2.1/RING*dt;p.ang-=w;p.left-=w;p.x=KC.x+Math.cos(p.ang)*RING;p.z=KC.z+Math.sin(p.ang)*RING;p.face=Math.atan2(Math.sin(p.ang),-Math.cos(p.ang));sp=2.1;
++        if(p.left<=0){p.st='out';let g=GATES[0],gd=1e9;for(const q of GATES){const d=Math.hypot(q.x-p.x,q.z-p.z);if(d<gd){gd=d;g=q;}}p.gate=g;}}
++      else if(p.st==='out'){sp=walk(p,p.gate.x,p.gate.z,dt,2.5);if(!sp){p.on=false;per.g.visible=false;continue;}}}
++    per.g.position.set(p.x,height(p.x,p.z),p.z);per.g.rotation.y=p.face;
++    const mood=p.st==='q'&&p.wait>p.pat*.6?'angry':p.st==='q'?'idle':'walk';animPerson(per,dt,sp,sp?'walk':mood);}
++  for(const k in STD){const s=STD[k];if(!standOpen(k)||!s.q.length)continue;const p=s.q[0];
++    if(sim&&p.st==='q'&&s.z.count>0){s.t+=dt;if(s.t>.9){s.t=0;serve(s);}}else s.t=0;}}
++/* ---------- seasons ---------- */
++function seasonDone(){D.meta.between=1;const s=D.meta.season,bonus=20*s;award(bonus);ssave();
++  setTimeout(()=>{if(R.ch!==MCH)return;state='ui';sfx.build();hap('heavy');
++    sheet(`<span class="ic">🌙</span><p class="eb">${CH[MCH].name}</p><h2>${L2('Hac mevsimi '+s+' tamamlandı!','Pilgrimage season '+s+' complete!')}</h2>
++      <div class="kstats"><div>${D.meta.ss}<small>${L2('İkram','Served')}</small></div><div>${D.meta.ms}<small>${L2('Bekleyip giden','Left waiting')}</small></div><div>🪙 +${bonus}<small>${L2('Mevsim hediyesi','Season gift')}</small></div></div>
++      <div class="learn"><b>📜 ${L2('Bunu biliyor muydun?','Did you know?')}</b>${SEASON_FACTS[(s-1)%SEASON_FACTS.length]}</div>
++      <p style="text-align:center;font:700 14px var(--f-ui);margin:10px 0 0">${L2('Sonraki mevsim: ','Next season: ')}${seasonTarget(s+1)} ${L2('hacı','pilgrims')}</p>
++      <div class="kbtns"><button class="kbtn alt" id="km-leave" data-back>${L2('Bölümler','Chapters')}</button><button class="kbtn" id="km-next">${L2('Sonraki mevsim ›','Next season ›')}</button></div>`,c=>{
++      c.querySelector('#km-next').onclick=()=>{nextSeason();closeSheet();state='play';};c.querySelector('#km-leave').onclick=()=>{nextSeason();cleanupChapter();showMap();};});},700);}
++function nextSeason(){if(!D.meta.between)return;D.meta.between=0;D.meta.season++;D.meta.ss=0;D.meta.ms=0;ssave();}
++const SEASON_FACTS=[
++  L2('Hacılara su vermeye “sikâye”, onları doyurmaya “rifâde” denirdi. Kusay b. Kilâb bu görevleri düzenledi.','Giving pilgrims water was called “siqaya” and feeding them “rifada”. Qusayy ibn Kilab organised both offices.'),
++  L2('Kusay, rifâde için Kureyşlilerden her hac mevsiminde katkı toplanmasını istemişti.','Qusayy asked the Quraysh to contribute every season so the pilgrims could be fed.'),
++  L2('Hâşim adı, hacılar için ekmeği ufalayıp et suyuyla tirit yapmasından gelir.','The name Hashim comes from crumbling bread into broth to make tharid for the pilgrims.'),
++  L2('Zemzem suyu hacılara deri kaplarla ve havuzlarla sunulurdu.','Zamzam water was offered to pilgrims from leather skins and basins.'),
++  L2('Mekke\'de tarım yoktu; hurma, un ve et kervanlarla gelirdi.','Mecca had no farmland; dates, flour and meat came by caravan.')];
++/* ---------- away earnings: only hired helpers work while you are gone ---------- */
++function awayEarnings(){const m=D.meta,now=Date.now();const hs=['saka','hurmaci','cirak'].filter(MU);
++  if(!hs.length||!m.lastT||now<=m.lastT){m.lastT=now;return null;}
++  const secs=Math.min(7200,(now-m.lastT)/1000);m.lastT=now;if(secs<120)return null;
++  const per=Math.floor(secs/20);const price={saka:2,hurmaci:4,cirak:6};let n=0,c=0;for(const h of hs){n+=per;c+=per*price[h];}
++  c=Math.round(c*.5);D.coins+=c;m.earned+=c;m.served+=n;ssave();return {n,c,mins:Math.round(secs/60)};}
++/* ---------- entering / leaving ---------- */
++function startMeta(){if(!D.stars[NCH]){showMap();return;}if(D.run){D.run=null;}
++  auInit();coinIcon();musicStart();cleanupChapter();KM.hidden=true;KT.hidden=true;titleEl.hidden=true;closeSheet();SITE.on=true;started=true;build();buildMeta();makeUpgradeWorkers();
++  R={ch:MCH,t:0,done:true,n:0,coins:0,good:0,bank:{},water:0,thirstT:0,thirsty:false,maxAnger:0,course:0,inCourse:0};stack=[];stackVis();syncPads();
++  for(const z of ZONES){if(!z.chs.includes(MCH)){continue;}z.t=0;}
++  const st=D.meta.stock;STD.w.z.count=st.w;STD.d.z.count=st.d;STD.b.z.count=st.b;Z.mdates.count=st.dates||12;Z.mflour.count=st.flour||9;Z.oven.count=st.oven;Z.ovenOut.count=st.ovenOut;
++  for(const k in STD){STD[k].cash=D.meta.cash[k]||0;STD[k].q.length=0;coinVis(STD[k]);}
++  applyMeta();for(const z of ZONES)if(z.chs.includes(MCH)&&z.pileG)pileVis(z);
++  kaaba({old:false,rubble:false,green:false,scaffold:false,wallH:8.7,stone:true,roof:true,door:true,hijr:true});setTime('asr');RAIN.target=0;flood.visible=false;resetOld();
++  metaG.visible=true;baker.g.visible=true;HELP.forEach(h=>h.per.g.visible=true);
++  hooks.step=metaStep;hooks.beat=metaBeat;hooks.cap=metaCap;placeHero(16.5,6.5);cam.yaw=Math.atan2(P.x,P.z);syncMPads();
++  hud.style.opacity=1;dpadApply();const aw=awayEarnings();state='play';R.done=false;
++  if(D.meta.between){D.meta.between=1;nextSeason();}
++  if(aw){state='ui';sheet(`<span class="ic">🫗</span><p class="eb">${CH[MCH].name}</p><h2>${L2('Hoş geldin!','Welcome back!')}</h2><p>${L2(`Sen yokken (${aw.mins} dk) yardımcıların ${aw.n} ikram yaptı.`,`While you were away (${aw.mins} min) your helpers served ${aw.n} times.`)}</p><div class="kstats"><div>🪙 +${aw.c}<small>${L2('Bereket','Bereket')}</small></div></div><div class="kbtns"><button class="kbtn" id="kw-ok" data-back>${L2('Devam','Continue')}</button></div>`,c=>{c.querySelector('#kw-ok').onclick=()=>{closeSheet();state='play';};});}
++  else toast(CH[MCH].task,5);}
++function leaveMeta(){if(!metaBuilt)return;saveMeta();for(const p of PIL){p.on=false;p.per.g.visible=false;}for(const k in STD)STD[k].q.length=0;
++  metaG.visible=false;baker.g.visible=false;HELP.forEach(h=>{h.per.g.visible=false;h.carry.length=0;h.job=null;});Z.mdates.camel.g.visible=false;for(const p of MPADS.splice(0))scene.remove(p.mesh);}
++function saveMeta(){if(!metaBuilt)return;const st=D.meta.stock;st.w=STD.w.z.count;st.d=STD.d.z.count;st.b=STD.b.z.count;st.dates=Z.mdates.count;st.flour=Z.mflour.count;st.oven=Z.oven.count;st.ovenOut=Z.ovenOut.count;
++  for(const k in STD)D.meta.cash[k]=STD[k].cash;D.meta.lastT=Date.now();}
++{const cc0=cleanupChapter;cleanupChapter=function(){if(R.ch===MCH)leaveMeta();cc0();};}
++{const sc0=startChapter;startChapter=function(n){if(n===MCH){startMeta();return;}sc0(n);};}
++document.addEventListener('visibilitychange',()=>{if(document.hidden&&R.ch===MCH&&SITE.on){saveMeta();ssave();}});
++addEventListener('pagehide',()=>{if(R.ch===MCH&&SITE.on){saveMeta();ssave();}});
++/* ---------- per frame ---------- */
++let metaSaveT=0;const refill={d:0,f:0};
++function metaStep(dt,playing){const sim=dt>0;cutter.forEach(c=>c.g.visible=false);if(carp)carp.g.visible=false;
++  const dOpen=standOpen('d'),bOpen=standOpen('b');Z.mdates.camel.g.visible=dOpen;
++  if(sim){if(dOpen){refill.d+=dt;if(refill.d>5){refill.d=0;if(Z.mdates.count<Z.mdates.max){Z.mdates.count=Math.min(Z.mdates.max,Z.mdates.count+4);pileVis(Z.mdates);}}}
++    if(bOpen){refill.f+=dt;if(refill.f>5.5){refill.f=0;if(Z.mflour.count<Z.mflour.max){Z.mflour.count=Math.min(Z.mflour.max,Z.mflour.count+3);pileVis(Z.mflour);}}
++      baker.t+=dt;if(baker.t>2.4){baker.t=0;if(Z.oven.count>0&&Z.ovenOut.count<Z.ovenOut.max){Z.oven.count--;Z.ovenOut.count++;pileVis(Z.oven);pileVis(Z.ovenOut);puff(Z.oven.dome.position.x,1.6,Z.oven.dome.position.z,3);}}}
++    if(playing&&!D.meta.between){spawnT-=dt;if(spawnT<=0){spawnT=Math.max(1.5,5.2-.35*(D.meta.season-1))*(.75+Math.random()*.5);spawnPilgrim();}}
++    metaSaveT+=dt;if(metaSaveT>3){metaSaveT=0;saveMeta();ssave();}}
++  animPerson(baker,dt||.016,0,bOpen&&Z.oven.count>0?'talk':'idle');baker.g.visible=bOpen;
++  stepPilgrims(dt,sim);stepHelpers(dt,sim);
++  for(const k in STD){const s=STD[k];s.g.visible=standOpen(k);s.coins.visible=s.g.visible;}}
++function metaBeat(top,cap,take,give){
++  if(inZ(Z.well)&&stack.length<cap&&(!stack.length||stack[0]==='water')){stack.push('water');sfx.pour();}
++  if(inZ(Z.mdates))take(Z.mdates,'dates');if(inZ(Z.mflour))take(Z.mflour,'flour');if(inZ(Z.oven))give(Z.oven,'flour');if(inZ(Z.ovenOut))take(Z.ovenOut,'bread');
++  for(const k of openStands()){const s=STD[k];if(!inZ(s.z))continue;give(s.z,s.item);
++    if(s.cash>0){const c=s.cash;s.cash=0;award(c);coinVis(s);coinsFly(Math.min(6,1+Math.floor(c/6)),s.coins.position.x,s.coins.position.y,s.coins.position.z);ftext('+'+c+' 🪙',s.z.x,2.4,s.z.z,'#ffd75e');sfx.good();hap();}}}
++/* ---------- arrow + HUD ---------- */
++{const st0=siteTarget;siteTarget=function(){if(R.ch!==MCH)return st0();if(state!=='play'||R.done)return null;const top=stack[stack.length-1];
++  if(top==='flour')return ZT(Z.oven);if(top&&ITEM_STAND[top]&&standOpen(ITEM_STAND[top]))return ZT(STD[ITEM_STAND[top]].z);
++  let best=null,bs=-1;for(const k of openStands()){const s=STD[k];const u=(s.q.length+1)*(s.z.count<2?3:1)/(1+s.z.count)+(s.cash>=24?2:0);if(u>bs){bs=u;best=k;}}
++  if(!best)return ZT(Z.well);const s=STD[best];if(s.cash>=24&&s.z.count>=2)return ZT(s.z);
++  if(best==='w')return ZT(Z.well);if(best==='d')return ZT(Z.mdates);return Z.ovenOut.count>0?ZT(Z.ovenOut):ZT(Z.mflour);};}
++{const uh0=updateHud;updateHud=function(dt){if(!(SITE.on&&R.ch===MCH)){uh0(dt);return;}const m=D.meta,tg=seasonTarget(m.season);
++  setT(qCh,'🫖 '+CH[MCH].name+' · '+L2('Mevsim ','Season ')+m.season);setT(qGoal,L2('İkram: ','Served: ')+m.ss+'/'+tg);setW(hEl.bar,Math.round(Math.min(1,m.ss/tg)*100)+'%');
++  let warn='';for(const k of openStands()){const s=STD[k];if(s.q.length>=3&&s.z.count===0){warn=s.icon+' '+L2(s.q.length+' hacı bekliyor: ','')+s.label+L2('',': '+s.q.length+' pilgrims waiting');break;}}
++  setT(qSub,warn||actionLine());const cap=metaCap(),top=stack[stack.length-1];setT(hEl.st,(top?NAMES_T[top]+' ':'')+stack.length+'/'+cap);setT(hEl.co,String(D.coins));setT(hEl.gd,String(D.good));setT(hEl.kb,'100%');
++  if(!carryEl.hidden)carryEl.hidden=true;if(toastT>0){toastT-=dt;if(toastT<=0)toastEl.classList.remove('on');}};}
++/* ---------- the map shows the layer: a teaser before chapter 7, the door after it ---------- */
++function metaIntro(){sheet(`<span class="ic">🫖</span><p class="eb">${L2('Hikâyeden sonra','After the story')}</p><h2>${CH[MCH].name}</h2>
++  <p>${L2('Kâbe\'nin hizmetleri arasında hacılara su vermek (<b>sikâye</b>) ve onları doyurmak (<b>rifâde</b>) vardı. Kusay b. Kilâb bu görevleri düzenledi; Kureyşliler her hac mevsiminde bunun için katkı toplardı.','Among the Kaaba\'s duties were giving pilgrims water (<b>siqaya</b>) and feeding them (<b>rifada</b>). Qusayy ibn Kilab organised these offices, and the Quraysh contributed every pilgrimage season.')}</p>
++  <div class="task"><span>🎮</span><span>${L2('Oyunda: stantlar, sıralar, yardımcılar ve sayılar oyun mekaniğidir. Hacılar Kâbe\'yi bir tur tavaf eder; gerçekte tavaf yedi şavttır.','In the game: stands, queues, helpers and numbers are game mechanics. Pilgrims walk one circuit around the Kaaba; a real tawaf is seven.')}</span></div>
++  <div class="kbtns"><button class="kbtn alt" id="mi-x" data-back>${L2('Geri','Back')}</button><button class="kbtn" id="mi-go">${L2('Başla','Start')}</button></div>`,c=>{
++  c.querySelector('#mi-x').onclick=()=>{closeSheet();if(KM.hidden&&KT.hidden)showMap();};c.querySelector('#mi-go').onclick=()=>{D.meta.intro=1;ssave();closeSheet();startMeta();};});}
++{const sm0=showMap;showMap=function(){sm0();const path=$('#km-path');if(!path)return;const lock=!D.stars[NCH];path.appendChild(el('<div class="kdots"></div>'));
++  const b=el(`<button class="knode${lock?' lock':''}" id="km-meta" style="transform:translateX(${Math.sin(8*1.3)*70}px)"><span class="c">${lock?'🔒':'🫖'}</span><span class="n">∞</span><span class="t">${CH[MCH].name}</span><span class="s">${lock?L2('7. bölümden sonra','After chapter 7'):L2('Mevsim ','Season ')+D.meta.season}</span></button>`);
++  b.onclick=()=>{sfx.ui&&sfx.ui();if(lock){toast(L2('Kâbe\'yi tamamlayınca açılır: hacılara su, hurma ve ekmek ikram edeceksin.','Opens when the Kaaba is complete: you will serve pilgrims water, dates and bread.'),4);return;}if(!D.meta.intro)metaIntro();else startMeta();};path.appendChild(b);
++  if(!lock){path.querySelectorAll('.knode.cur').forEach(n=>n.classList.remove('cur'));b.classList.add('cur');setTimeout(()=>b.scrollIntoView({block:'center'}),40);}};}
++/* the title's PLAY goes to the map when the story is done (the map offers both) */
++Object.assign(window.__site,{startMeta,leaveMeta,STD,MUPG,PIL:()=>PIL.filter(p=>p.on).map(p=>({st:p.st,stand:p.stand.k,x:p.x,z:p.z})),HELP:()=>HELP.map(h=>({id:h.id,x:h.x,z:h.z,carry:h.carry.length})),
++  meta:()=>D.meta,seasonTarget,awayEarnings,MPADS:()=>MPADS.map(p=>p.u.id),metaCap,saveMeta,startChapter,showMap,showStory,
++  spawn:()=>spawnPilgrim(),setStock:(k,n)=>{STD[k].z.count=n;pileVis(STD[k].z);}});
++/* ---------- one late check after everything loaded: a context-loss reload resumes play ---------- */
++try{if(sessionStorage.getItem('kabe-resume')){sessionStorage.removeItem('kabe-resume');if(D.run&&MODE!=='p2'&&!KT.hidden)setTimeout(()=>showStory(D.run.ch),200);}}catch(_){}
++})();
